@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# 민감 정보 (절대 업로드 금지)
+email_config.json
+*.env
+auth.json
+
+# 로그 및 백업
+execution_logs/
+old_versions/
+*.log
+*.bak
+
+# 데이터 시각화용 임시 파일 (로컬에서 생성하여 올릴 것이므로 이 파일들은 제외하지 않음)
+# web_data_*.json  <-- 이 파일들은 배포 데이터이므로 업로드에 포함시킵니다.
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
