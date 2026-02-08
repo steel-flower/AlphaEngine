@@ -7,9 +7,9 @@ font = "sans serif"
 
 [server]
 headless = true
-port = 8502
+# port = 8502  <-- 이 부분을 삭제/주석처리하여 웹 서버 기본값을 따르게 합니다.
 enableCORS = true
-enableXsrfProtection = true
+enableXsrfProtection = false
 
 [browser]
 gatherUsageStats = false
