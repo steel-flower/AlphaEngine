@@ -1,18 +1,18 @@
 {
     "ticker": "114800.KS",
     "name": "KODEX 인버스",
-    "updated": "2026-02-08 14:04:18",
+    "updated": "2026-02-08 15:57:28",
     "summary": {
         "total_return": 0.0,
         "cagr": 0.0,
         "sharpe": 0.0,
         "mdd": 0.0,
-        "total_trades": 0,
-        "win_loss_ratio": 0.0,
+        "total_trades": 5,
+        "win_loss_ratio": 0.48549872402126926,
         "current_price": 1943.0
     },
     "latest_signal": {
-        "ai_score": -1.016486406326294,
+        "ai_score": -0.14329540729522705,
         "tech_score": -0.19999999999999996,
         "entry_threshold": 0.5
     },
@@ -34,9 +34,9 @@
         {
             "year": 2011,
             "return": 0.0,
-            "trades": 0,
+            "trades": 1,
             "win_rate": 0.0,
-            "avg_hold": 0.0
+            "avg_hold": 2.0
         },
         {
             "year": 2012,
@@ -104,9 +104,9 @@
         {
             "year": 2021,
             "return": 0.0,
-            "trades": 0,
-            "win_rate": 0.0,
-            "avg_hold": 0.0
+            "trades": 3,
+            "win_rate": 0.6666666666666666,
+            "avg_hold": 1.3333333333333333
         },
         {
             "year": 2022,
@@ -132,9 +132,9 @@
         {
             "year": 2025,
             "return": 0.0,
-            "trades": 0,
-            "win_rate": 0.0,
-            "avg_hold": 0.0
+            "trades": 1,
+            "win_rate": 1.0,
+            "avg_hold": 4.0
         },
         {
             "year": 2026,
@@ -926,7 +926,43 @@
             "return": 0.0
         }
     ],
-    "trade_history": [],
+    "trade_history": [
+        {
+            "date": "2011-01-26",
+            "price": 7410.0,
+            "signal": "SELL",
+            "ai_score": -0.9591184854507446,
+            "tech_score": -0.6
+        },
+        {
+            "date": "2021-02-01",
+            "price": 3965.0,
+            "signal": "SELL",
+            "ai_score": -0.7883179783821106,
+            "tech_score": 1.1
+        },
+        {
+            "date": "2021-02-26",
+            "price": 3995.0,
+            "signal": "SELL",
+            "ai_score": -0.9087244272232056,
+            "tech_score": 1.5
+        },
+        {
+            "date": "2021-03-04",
+            "price": 3950.0,
+            "signal": "SELL",
+            "ai_score": -0.9722123742103577,
+            "tech_score": 0.75
+        },
+        {
+            "date": "2025-11-26",
+            "price": 2650.0,
+            "signal": "SELL",
+            "ai_score": -0.9881432056427002,
+            "tech_score": 0.35000000000000003
+        }
+    ],
     "daily_performance": [
         {
             "date": "2009-12-14",
@@ -2893,7 +2929,7 @@
             "strategy": 1.0,
             "market": 0.7678756476683936,
             "close": 7410.0,
-            "signal": 0.0
+            "signal": -1.0
         },
         {
             "date": "2011-01-27",
@@ -20092,7 +20128,7 @@
             "strategy": 1.0,
             "market": 0.410880829015543,
             "close": 3965.0,
-            "signal": 0.0
+            "signal": -1.0
         },
         {
             "date": "2021-02-02",
@@ -20211,7 +20247,7 @@
             "strategy": 1.0,
             "market": 0.4139896373056982,
             "close": 3995.0,
-            "signal": 0.0
+            "signal": -1.0
         },
         {
             "date": "2021-03-02",
@@ -20232,7 +20268,7 @@
             "strategy": 1.0,
             "market": 0.4093264248704651,
             "close": 3950.0,
-            "signal": 0.0
+            "signal": -1.0
         },
         {
             "date": "2021-03-05",
@@ -28198,7 +28234,7 @@
             "strategy": 1.0,
             "market": 0.2746113989637295,
             "close": 2650.0,
-            "signal": 0.0
+            "signal": -1.0
         },
         {
             "date": "2025-11-27",
