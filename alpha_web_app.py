@@ -100,69 +100,83 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 선택 및 데이터 로드
+            # [Step 1] 종목 선택 및 데이터 정제
             selected_asset = st.selectbox("📊 상세 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             
             @st.cache_data(ttl=300)
-            def fetch_full_history(t):
+            def fetch_clean_data(t):
                 try:
-                    raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
+                    # 상장 이후 전체 (월간)
+                    raw = yf.download(t, period="max", interval="1mo", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
                     if isinstance(raw.columns, pd.MultiIndex): raw.columns = raw.columns.get_level_values(0)
                     raw.columns = [str(c).lower() for c in raw.columns]
-                    return raw[['close']].resample('ME').last().dropna()
+                    # 시계열 인덱스 명확화
+                    raw.index = pd.to_datetime(raw.index)
+                    return raw[['close']].dropna()
                 except: return pd.DataFrame()
 
-            chart_df = fetch_full_history(asset_info['ticker'])
+            chart_df = fetch_clean_data(asset_info['ticker'])
             
             if not chart_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 전략 캔버스 (마스터 뷰)")
+                st.subheader(f"🏛️ {selected_asset} 리서치 리포트")
                 
-                # 수치 데이터
-                prices = chart_df['close']
-                curr = prices.iloc[-1]
+                # 수치 정보
+                curr = chart_df['close'].iloc[-1]
                 target = float(asset_info['target_price'])
                 entry = float(asset_info['entry_price'])
                 stop = float(asset_info['stop_loss'])
                 
-                # [Step 2] Plotly 고성능 엔진
+                # [Step 2] 시인성 극대화 차트 (White Theme + Black/Blue/Red)
                 fig = go.Figure()
                 
-                # 메인 주가 (검정/화이트 대비)
+                # 메인 주가 (검정색 굵은 선 - 화이트 배경에서 최강의 시인성)
                 fig.add_trace(go.Scatter(
-                    x=chart_df.index, y=prices,
-                    name="주가 흐름", line=dict(color='white', width=2)
+                    x=chart_df.index, y=chart_df['close'],
+                    name="실제 주가", line=dict(color='#000000', width=3)
                 ))
                 
-                # 전략 가이드선 (차트 전체를 가로지르는 h-line 사용)
-                fig.add_hline(y=target, line_dash="dash", line_color="#0088ff", annotation_text=f"Sell: {target:,.0f}", annotation_position="top right")
-                fig.add_hline(y=entry, line_dash="dot", line_color="#00AAFF", annotation_text=f"Buy: {entry:,.0f}", annotation_position="bottom right")
-                fig.add_hline(y=stop, line_dash="longdash", line_color="#FF4B4B", annotation_text=f"Stop: {stop:,.0f}", annotation_position="bottom right")
+                # 전략 라인 (최신 기간에만 짧게 표시하여 '긴 수평선' 문제 해결)
+                # 최근 20% 지점 혹은 최근 12개월 중 짧은 쪽 선택
+                line_len = min(12, int(len(chart_df)*0.2))
+                line_x = chart_df.index[-line_len:]
                 
-                # [v3.5 Smart Focus]
-                # 최근 3년 데이터와 전략 라인이 모두 보기에 가장 좋은 범위를 계산
-                recent_p = prices.tail(36)
-                y_min = min(recent_p.min(), stop, entry) * 0.95
-                y_max = max(recent_p.max(), target) * 1.05
+                # 익절 목표가 (Blue)
+                fig.add_trace(go.Scatter(
+                    x=line_x, y=[target]*len(line_x),
+                    name="Blue: 전략 매도가", line=dict(color='blue', width=3, dash='dash')
+                ))
+                # 안전 손절가 (Red)
+                fig.add_trace(go.Scatter(
+                    x=line_x, y=[stop]*len(line_x),
+                    name="Red: 손절 방어선", line=dict(color='red', width=3, dash='dot')
+                ))
+                
+                # [v3.6 Dynamic Focusing]
+                # 최근 데이터 범위로 초기 시야 고정 (과거 데이터로 인한 뭉침 방지)
+                recent_data = chart_df['close'].tail(line_len * 2) if len(chart_df) > line_len*2 else chart_df['close']
+                y_min = min(recent_data.min(), stop) * 0.95
+                y_max = max(recent_data.max(), target) * 1.05
                 
                 fig.update_layout(
-                    template="plotly_dark", height=550,
-                    xaxis=dict(gridcolor='#333', rangeslider=dict(visible=True)),
-                    yaxis=dict(gridcolor='#333', range=[y_min, y_max], autorange=False, title="Price (KRW)"),
+                    paper_bgcolor='white', plot_bgcolor='white',
+                    height=500,
+                    xaxis=dict(gridcolor='#eee', rangeslider=dict(visible=True)),
+                    yaxis=dict(gridcolor='#eee', range=[y_min, y_max], autorange=False, title="Price (KRW)"),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    margin=dict(l=10, r=60, t=40, b=10)
+                    margin=dict(l=10, r=40, t=40, b=10)
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 상세 지표 카드
-                m1, m2, m3 = st.columns(3)
-                m2.metric("현재가", f"{curr:,.0f}")
-                m1.metric("Alpha 매도목표", f"{target:,.0f}", f"{(target/curr-1)*100:+.1f}%")
-                m3.metric("Alpha 손절안전", f"{stop:,.0f}", f"{(stop/curr-1)*100:+.1f}%")
+                # 하단 수치 가이드
+                c1, c2, c3 = st.columns(3)
+                c2.metric("현재가 (⚫Black)", f"{curr:,.0f}")
+                c1.metric("매도목표 (🔵Blue)", f"{target:,.0f}", f"{(target/curr-1)*100:+.1f}%")
+                c3.metric("손절선 (🔴Red)", f"{stop:,.0f}", f"{(stop/curr-1)*100:+.1f}%")
             else:
-                st.error("데이터 서버 응답 대기 중...")
+                st.error("데이터 통신 중입니다. 잠시만 기다려주세요.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
