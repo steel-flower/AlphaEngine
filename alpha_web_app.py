@@ -100,51 +100,84 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 선택 및 상장 이후 전생애 데이터 호출
+            # [Step 1] 종목 및 전세애 데이터 호출
             selected_asset = st.selectbox("📊 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             ticker = asset_info['ticker']
             
-            # [Step 2] 데이터 확보 (상장일부터 현재까지, 원본 그대로)
             @st.cache_data(ttl=60)
-            def fetch_max_history(t):
+            def fetch_full_history(t):
                 try:
-                    # yfinance에서 상장 이후(max) 일간 종가 원본 로드
                     raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
-                    
-                    # MultiIndex 구조 정규화
-                    if isinstance(raw.columns, pd.MultiIndex):
-                        raw.columns = raw.columns.get_level_values(0)
-                    
-                    raw.columns = [str(c).lower() for c in raw.columns]
-                    if 'close' not in raw.columns: return pd.DataFrame()
-                    
-                    return raw[['close']].astype(float)
+                    if isinstance(raw.columns, pd.MultiIndex): raw.columns = raw.columns.get_level_values(0)
+                    raw.columns = [str(c).lower().strip() for c in raw.columns]
+                    return raw[['close']].astype(float).sort_index()
                 except: return pd.DataFrame()
 
-            price_df = fetch_max_history(ticker)
+            price_df = fetch_full_history(ticker)
             
             if not price_df.empty:
-                st.subheader(f"📈 {selected_asset} 상장 이후 실제 주가 궤적")
+                st.subheader(f"🏛️ {selected_asset} 전략 통합 분석 (전구간)")
                 
-                # [Step 3] 데이터 실명제: 그래프의 근본이 되는 숫자 공개
-                st.write("🏛️ **차트 생성 데이터 검증 (최근 10일 수치)**")
-                verify_table = price_df.tail(10).copy()
-                verify_table.index = verify_table.index.strftime('%Y-%m-%d')
-                verify_table.columns = ['종가 (Y축 높이)']
-                st.dataframe(verify_table.T, use_container_width=True)
+                # 시각화 엔진 (무조작 원칙 + 전략선 추가)
+                fig = go.Figure()
                 
-                # [Step 4] "X=시간, Y=가격" 절대 원칙에 따른 렌더링
-                # Log Scale, Smoothing, Padding 모두 제거하고 산술 눈금에 데이터 포인트만 찍어 연결
-                st.line_chart(price_df['close'], use_container_width=True)
+                # 1. 실제 주가 (Solid Black)
+                fig.add_trace(go.Scatter(
+                    x=price_df.index, y=price_df['close'],
+                    name="실제 주가",
+                    line=dict(color='black', width=1.5),
+                    hovertemplate="날짜: %{x}<br>주가: %{y:,.0f} KRW<extra></extra>"
+                ))
                 
-                # 최종 데이터 리포트
-                ipo_date = price_df.index[0].strftime('%Y-%m-%d')
-                last_p = price_df['close'].iloc[-1]
-                st.info(f"✅ **{ticker}** 차트는 **{ipo_date}(상장일)**부터 현재까지의 데이터를 **조작 없이** 선형 눈금으로 연결한 결과입니다. (최종가: {last_p:,.0f} KRW)")
+                # [AlphaEngine 전략선 - 검정색 테마]
+                target = float(asset_info['target_price'])
+                entry = float(asset_info['entry_price'])
+                
+                # 2. Alpha 매도 목표 (Dashed Black)
+                fig.add_trace(go.Scatter(
+                    x=[price_df.index[0], price_df.index[-1]], 
+                    y=[target, target],
+                    name="Alpha 매도목표",
+                    line=dict(color='black', width=2, dash='dash'),
+                    hovertemplate=f"Alpha 매도: {target:,.0f} KRW<extra></extra>"
+                ))
+                
+                # 3. Alpha 매수 진입 (Dotted Black)
+                fig.add_trace(go.Scatter(
+                    x=[price_df.index[0], price_df.index[-1]], 
+                    y=[entry, entry],
+                    name="Alpha 매수진입",
+                    line=dict(color='black', width=2, dash='dot'),
+                    hovertemplate=f"Alpha 매수: {entry:,.0f} KRW<extra></extra>"
+                ))
+                
+                fig.update_layout(
+                    paper_bgcolor='white', plot_bgcolor='white',
+                    height=600,
+                    yaxis=dict(
+                        gridcolor='#f0f0f0', autorange=True,
+                        title="Price (KRW)", side="right", tickformat=',.0f'
+                    ),
+                    xaxis=dict(
+                        gridcolor='#f0f0f0', title="Timeline",
+                        autorange=True, rangeslider=dict(visible=True)
+                    ),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    hovermode="x unified",
+                    margin=dict(l=10, r=40, t=50, b=10)
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # 하단 수치 가이드
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Alpha 매도(Dash)", f"{target:,.0f}")
+                c2.metric("현재가(Solid)", f"{price_df['close'].iloc[-1]:,.0f}")
+                c3.metric("Alpha 매수(Dot)", f"{entry:,.0f}")
             else:
-                st.error("데이터 서버에서 해당 종목의 상장 이후 데이터를 가져오지 못했습니다.")
+                st.error("데이터 로딩 실패")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
