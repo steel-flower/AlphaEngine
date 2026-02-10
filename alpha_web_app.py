@@ -100,85 +100,59 @@ if check_password():
             )
 
         with col_chart:
-            # 종목 선택
+            # [Step 1] 종목 선택 및 정보 추출
             selected_asset = st.selectbox("📊 상세 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
+            ticker = asset_info['ticker']
             
-            # 차트 유형 선택
-            col_opt1, col_opt2 = st.columns(2)
-            use_log = col_opt1.checkbox("로그 스케일 (장기 추세용)", value=True) # 기본값 True로 변경하여 왜곡 방지
-            
+            # [Step 2] 데이터 로드 (가장 단순하고 확실한 방식)
             @st.cache_data(ttl=300)
-            def get_chart_data(ticker):
+            def fetch_simple_data(t):
                 try:
-                    # [v3.4 FIX] 일간 데이터를 가져와서 로컬에서 월간으로 리샘플링 (더 정확함)
-                    temp = yf.download(ticker, period="max", interval="1d", auto_adjust=True, progress=False)
-                    if temp.empty: return pd.DataFrame()
+                    # 일간 데이터를 가져와서 강제로 평탄화
+                    raw = yf.download(t, period="5y", interval="1d", auto_adjust=True, progress=False)
+                    if raw.empty: return pd.DataFrame()
                     
-                    if isinstance(temp.columns, pd.MultiIndex):
-                        temp.columns = temp.columns.get_level_values(0)
-                    temp.columns = [c.lower() for c in temp.columns]
+                    # 컬럼 정리 (MultiIndex 방어)
+                    data = raw.copy()
+                    if isinstance(data.columns, pd.MultiIndex):
+                        data.columns = data.columns.get_level_values(0)
+                    data.columns = [str(c).lower() for c in data.columns]
                     
-                    # 월간 데이터로 리샘플링 (마지막 거래일 기준)
-                    monthly_df = temp.resample('ME').last()
-                    return monthly_df.dropna(subset=['close'])
-                except Exception: return pd.DataFrame()
+                    # 월간 리샘플링
+                    m_data = data[['close']].resample('ME').last().dropna()
+                    return m_data
+                except:
+                    return pd.DataFrame()
+
+            chart_df = fetch_simple_data(ticker)
             
-            with st.spinner(f"{selected_asset} 월간 트렌드 분석 중..."):
-                chart_df = get_chart_data(asset_info['ticker'])
-            
+            # [Step 3] 차트 렌더링 (가장 시인성 높은 기본형으로 회귀)
             if not chart_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 월간 전략 보드")
+                st.subheader(f"📈 {selected_asset} 실시간 추세 분석")
                 
-                # 데이터 준비
-                current_price = chart_df['close'].iloc[-1]
-                target_p = float(asset_info['target_price'])
-                stop_p = float(asset_info['stop_loss'])
+                # Plotly 엔진의 복잡한 설정을 버리고 Streamlit의 순정 차트로 승부
+                # 시인성 확보를 위해 목표가/손절가를 차트 데이터에 합쳐서 전송
+                viz_df = chart_df.copy()
+                viz_df['Target'] = float(asset_info['target_price'])
+                viz_df['StopLoss'] = float(asset_info['stop_loss'])
                 
-                fig = go.Figure()
-                
-                # 1. 메인 주가 (굵은 흰색 선)
-                fig.add_trace(go.Scatter(
-                    x=chart_df.index, y=chart_df['close'],
-                    name="월간 종가", line=dict(color='white', width=3)
-                ))
-                
-                # 2. 전략 가이드 라인 (최근 2년치 영역에만 표시하여 과거 차트 왜곡 방지)
-                # 데이터가 충분하면 최근 24개월, 아니면 전체의 30%
-                lookback = min(24, int(len(chart_df)*0.5))
-                line_x = chart_df.index[-lookback:]
-                
-                fig.add_trace(go.Scatter(
-                    x=line_x, y=[target_p]*len(line_x),
-                    name="Target (Blue)", line=dict(color='#0088ff', width=3, dash='dash')
-                ))
-                fig.add_trace(go.Scatter(
-                    x=line_x, y=[stop_p]*len(line_x),
-                    name="Stop (Red)", line=dict(color='#ff4b4b', width=3, dash='dot')
-                ))
-                
-                # 스마트 스케일링: 최근 데이터 위주로 초기 범위 설정
-                y_min = min(chart_df['close'].iloc[-lookback:].min(), stop_p) * 0.95
-                y_max = max(chart_df['close'].iloc[-lookback:].max(), target_p) * 1.05
-                
-                fig.update_layout(
-                    template="plotly_dark", height=550,
-                    yaxis_type="log" if use_log else "linear",
-                    yaxis=dict(gridcolor='#333', title="Price (KRW)", range=[y_min, y_max] if not use_log else None),
-                    xaxis=dict(gridcolor='#333', title="Date", rangeslider=dict(visible=True)),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    margin=dict(l=10, r=10, t=40, b=10)
+                # 사용자 요청 색상 반영 (흰색/파란색/빨간색)
+                st.line_chart(
+                    viz_df, 
+                    color=["#FFFFFF", "#0088ff", "#ff4b4b"], # 현재가(White), 목표(Blue), 손절(Red)
+                    height=450
                 )
                 
-                st.plotly_chart(fig, use_container_width=True)
+                # 하단에 큰 수치로 정보 보강
+                c1, c2, c3 = st.columns(3)
+                c2.metric("현재가 (🏳️White)", f"{chart_df['close'].iloc[-1]:,.0f}")
+                c1.metric("목표가 (🎯Blue)", f"{asset_info['target_price']:,.0f}")
+                c3.metric("손절가 (🛑Red)", f"{asset_info['stop_loss']:,.0f}")
                 
-                # 하단 대형 지표
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Target (🎯Blue)", f"{target_p:,.0f}")
-                m2.metric("Current (🏳️White)", f"{current_price:,.0f}")
-                m3.metric("Stop-Loss (🛑Red)", f"{stop_p:,.0f}")
+                st.caption("※ 그래프가 너무 뭉쳐 보일 경우, 마우스 휠로 확대/축소하거나 우측 상단 메뉴에서 전체 화면으로 보실 수 있습니다.")
             else:
-                st.error("차트 데이터를 구성할 수 없습니다. 종목 코드를 확인하세요.")
+                st.error("차트 데이터를 불러오는 데 실패했습니다. 종목 코드를 확인하세요.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
