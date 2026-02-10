@@ -111,8 +111,8 @@ if check_password():
             @st.cache_data(ttl=300)
             def get_chart_data(ticker):
                 try:
-                    # 상장 이후 전체 기간
-                    temp = yf.download(ticker, period="max", interval="1d", auto_adjust=True, progress=False)
+                    # 상장 이후 전체 기간 데이터를 '월간(1mo)' 단위로 가져와 시인성 개선
+                    temp = yf.download(ticker, period="max", interval="1mo", auto_adjust=True, progress=False)
                     if temp.empty: return pd.DataFrame()
                     if isinstance(temp.columns, pd.MultiIndex): temp.columns = temp.columns.get_level_values(0)
                     temp.columns = [c.lower() for c in temp.columns]
