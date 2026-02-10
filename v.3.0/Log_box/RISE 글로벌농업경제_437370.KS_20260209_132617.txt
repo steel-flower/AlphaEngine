@@ -1,0 +1,20 @@
+=== ALPHA ENGINE REPORT v3.0: RISE 글로벌농업경제 (437370.KS) ===
+ Date: 20260209_132617
+ [!] 전회보다 당회의 누적수익률이 좋지 못해 전회의 실적유산과 환경을 그대로 승계유지
+
+[1. Optimized Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.3,
+  "tp_atr": 3.2,
+  "sl_atr": 1.5,
+  "rsi_period": 14
+}
+
+[2. Metrics]
+ - Return: 19.33%
+ - Sharpe: 1.10
+ - MDD: 3.47%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.3, "tp_atr": 3.2, "sl_atr": 1.5, "rsi_period": 14}, "score": 500.1647077664558}

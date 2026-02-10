@@ -1,0 +1,20 @@
+=== ALPHA ENGINE REPORT v3.0: KODEX 인버스 (114800.KS) ===
+ Date: 20260209_132419
+ [!] 전회보다 당회의 누적수익률이 좋지 못해 전회의 실적유산과 환경을 그대로 승계유지
+
+[1. Optimized Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.3,
+  "tp_atr": 3.0,
+  "sl_atr": 1.2,
+  "rsi_period": 14
+}
+
+[2. Metrics]
+ - Return: 0.70%
+ - Sharpe: 0.03
+ - MDD: 9.25%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.3, "tp_atr": 3.0, "sl_atr": 1.2, "rsi_period": 14}, "score": 0.0}

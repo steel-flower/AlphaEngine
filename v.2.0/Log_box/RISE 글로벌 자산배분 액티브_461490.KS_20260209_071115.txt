@@ -1,0 +1,24 @@
+=== ALPHA ENGINE REPORT: RISE 글로벌 자산배분 액티브 (461490.KS) ===
+ Date: 2026-02-09 07:11:15
+
+[1. Optimized Strategy Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.45,
+  "tp_atr": 3.5,
+  "sl_atr": 1.2,
+  "rsi_period": 14
+}
+
+[2. Performance Metrics]
+ - Return: 2.57%
+ - Sharpe: 1.01
+ - MDD: 1.17%
+
+[3. Annual Performance]
+ - 2024: +0.59%
+ - 2025: +1.83%
+ - 2026: +0.13%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.45, "tp_atr": 3.5, "sl_atr": 1.2, "rsi_period": 14}, "score": 305.6844850377232}

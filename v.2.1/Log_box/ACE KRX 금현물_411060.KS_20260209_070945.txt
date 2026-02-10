@@ -1,0 +1,25 @@
+=== ALPHA ENGINE REPORT: ACE KRX 금현물 (411060.KS) ===
+ Date: 2026-02-09 07:09:45
+
+[1. Optimized Strategy Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.35,
+  "tp_atr": 3.5,
+  "sl_atr": 1.2,
+  "rsi_period": 14
+}
+
+[2. Performance Metrics]
+ - Return: 111.49%
+ - Sharpe: 2.86
+ - MDD: 4.89%
+
+[3. Annual Performance]
+ - 2023: +8.95%
+ - 2024: +36.92%
+ - 2025: +40.25%
+ - 2026: +1.09%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.35, "tp_atr": 3.5, "sl_atr": 1.2, "rsi_period": 14}, "score": 968.1922383671828}

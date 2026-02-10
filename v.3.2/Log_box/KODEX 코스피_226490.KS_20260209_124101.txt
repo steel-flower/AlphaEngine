@@ -1,0 +1,33 @@
+=== ALPHA ENGINE REPORT v3.0: KODEX 코스피 (226490.KS) ===
+ Date: 20260209_124101
+
+[1. Optimized Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.4,
+  "tp_atr": 3.5,
+  "sl_atr": 1.2,
+  "rsi_period": 14
+}
+
+[2. Metrics]
+ - Return: 1608.14%
+ - Sharpe: 2.44
+ - MDD: 13.22%
+
+[3. Annual]
+ - 2015: +0.88%
+ - 2016: +10.60%
+ - 2017: +14.19%
+ - 2018: +11.35%
+ - 2019: +30.43%
+ - 2020: +116.78%
+ - 2021: +9.60%
+ - 2022: +24.28%
+ - 2023: +24.21%
+ - 2024: +35.34%
+ - 2025: +62.72%
+ - 2026: +14.30%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.4, "tp_atr": 3.5, "sl_atr": 1.2, "rsi_period": 14}, "score": 2594.656579723369}

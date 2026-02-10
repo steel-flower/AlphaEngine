@@ -1,0 +1,38 @@
+=== ALPHA ENGINE REPORT: KODEX 인버스 (114800.KS) ===
+ Date: 2026-02-09 07:09:31
+
+[1. Optimized Strategy Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.35,
+  "tp_atr": 3.2,
+  "sl_atr": 1.5,
+  "rsi_period": 14
+}
+
+[2. Performance Metrics]
+ - Return: 11.88%
+ - Sharpe: 0.16
+ - MDD: 14.65%
+
+[3. Annual Performance]
+ - 2010: -0.82%
+ - 2011: +9.72%
+ - 2012: +0.07%
+ - 2013: +0.55%
+ - 2014: -0.13%
+ - 2015: +0.01%
+ - 2016: -1.52%
+ - 2017: -1.28%
+ - 2018: +2.61%
+ - 2019: +0.87%
+ - 2020: -3.49%
+ - 2021: +3.47%
+ - 2022: +2.32%
+ - 2023: +3.99%
+ - 2024: +2.43%
+ - 2025: +1.71%
+ - 2026: -8.16%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.35, "tp_atr": 3.2, "sl_atr": 1.5, "rsi_period": 14}, "score": -29941.49162257945}

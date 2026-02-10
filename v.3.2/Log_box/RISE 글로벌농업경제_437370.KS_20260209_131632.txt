@@ -1,0 +1,26 @@
+=== ALPHA ENGINE REPORT v3.0: RISE 글로벌농업경제 (437370.KS) ===
+ Date: 20260209_131632
+
+[1. Optimized Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.3,
+  "tp_atr": 3.2,
+  "sl_atr": 1.5,
+  "rsi_period": 14
+}
+
+[2. Metrics]
+ - Return: 35.94%
+ - Sharpe: 1.46
+ - MDD: 4.84%
+
+[3. Annual]
+ - 2022: -1.56%
+ - 2023: +22.65%
+ - 2024: +11.48%
+ - 2025: +1.00%
+ - 2026: +0.00%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.3, "tp_atr": 3.2, "sl_atr": 1.5, "rsi_period": 14}, "score": 500.1647077664558}

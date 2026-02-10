@@ -1,0 +1,36 @@
+=== ALPHA ENGINE REPORT: KODEX 은선물(H) (144600.KS) ===
+ Date: 2026-02-09 07:27:13
+
+[1. Optimized Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.4,
+  "tp_atr": 3.5,
+  "sl_atr": 1.2,
+  "rsi_period": 14
+}
+
+[2. Performance Metrics]
+ - Return: 169.48%
+ - Sharpe: 0.79
+ - MDD: 18.58%
+
+[3. Annual]
+ - 2012: -1.01%
+ - 2013: +10.10%
+ - 2014: +10.77%
+ - 2015: +5.92%
+ - 2016: +2.44%
+ - 2017: +10.75%
+ - 2018: -0.38%
+ - 2019: +0.14%
+ - 2020: +23.51%
+ - 2021: +16.81%
+ - 2022: +13.13%
+ - 2023: +11.13%
+ - 2024: -7.55%
+ - 2025: +11.05%
+ - 2026: +0.00%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.4, "tp_atr": 3.5, "sl_atr": 1.2, "rsi_period": 14}, "score": -14592.174636012865}

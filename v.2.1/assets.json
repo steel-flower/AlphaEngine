@@ -1,0 +1,30 @@
+[
+    {
+        "ticker": "226490.KS",
+        "name": "KODEX 코스피"
+    },
+    {
+        "ticker": "114800.KS",
+        "name": "KODEX 인버스"
+    },
+    {
+        "ticker": "411060.KS",
+        "name": "ACE KRX 금현물"
+    },
+    {
+        "ticker": "144600.KS",
+        "name": "KODEX 은선물(H)"
+    },
+    {
+        "ticker": "461490.KS",
+        "name": "RISE 글로벌 자산배분 액티브"
+    },
+    {
+        "ticker": "437370.KS",
+        "name": "RISE 글로벌농업경제"
+    },
+    {
+        "ticker": "261220.KS",
+        "name": "KODEX WTI 원유선물(H)"
+    }
+]

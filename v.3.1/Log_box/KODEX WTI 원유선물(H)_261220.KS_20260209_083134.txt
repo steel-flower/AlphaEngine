@@ -1,0 +1,31 @@
+=== ALPHA ENGINE REPORT v1: KODEX WTI 원유선물(H) (261220.KS) ===
+ Date: 2026-02-09 08:31:34
+ [Mode] INFINITE DISCOVERY (10-Round Best)
+
+[1. Optimized Strategy Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.35,
+  "tp_atr": 3.5,
+  "sl_atr": 1.2,
+  "rsi_period": 14
+}
+
+[2. Performance Metrics]
+ - Return: 446.68%
+ - Sharpe: 1.20
+ - MDD: 21.33%
+
+[3. Annual]
+ - 2018: -0.43%
+ - 2019: +26.76%
+ - 2020: +150.54%
+ - 2021: +2.36%
+ - 2022: +22.58%
+ - 2023: +19.13%
+ - 2024: +1.47%
+ - 2025: +13.99%
+ - 2026: +0.00%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.35, "tp_atr": 3.5, "sl_atr": 1.2, "rsi_period": 14}, "score": 71610.2492979281}

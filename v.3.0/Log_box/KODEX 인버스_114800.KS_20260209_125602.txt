@@ -1,0 +1,40 @@
+=== ALPHA ENGINE REPORT v3.0: KODEX 인버스 (114800.KS) ===
+ Date: 20260209_125602
+ [Mode] DOWNTREND ADAPTIVE ENABLED
+
+[1. Optimized Parameters]
+{
+  "lrs_period": 45,
+  "entry_threshold": 0.3,
+  "tp_atr": 3.0,
+  "sl_atr": 1.2,
+  "rsi_period": 14
+}
+
+[2. Metrics]
+ - Return: -3.54%
+ - Sharpe: -0.20
+ - MDD: 6.10%
+
+[3. Annual]
+ - 2009: +0.00%
+ - 2010: +0.00%
+ - 2011: +0.00%
+ - 2012: +0.00%
+ - 2013: +0.00%
+ - 2014: +0.00%
+ - 2015: +0.00%
+ - 2016: +0.00%
+ - 2017: +0.00%
+ - 2018: +0.00%
+ - 2019: +0.00%
+ - 2020: +0.00%
+ - 2021: +2.16%
+ - 2022: +0.00%
+ - 2023: +0.00%
+ - 2024: +0.00%
+ - 2025: -5.57%
+ - 2026: +0.00%
+
+### METADATA ###
+{"params": {"lrs_period": 45, "entry_threshold": 0.3, "tp_atr": 3.0, "sl_atr": 1.2, "rsi_period": 14}, "score": 0.0}
