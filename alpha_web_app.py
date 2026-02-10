@@ -109,8 +109,7 @@ if check_password():
             @st.cache_data(ttl=300)
             def fetch_trend_data(t):
                 try:
-                    # 상장 이후 전체 데이터를 가져와서 월간으로 정제
-                    raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
+                    raw = yf.download(t, period="5y", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
                     
                     data = raw.copy()
@@ -118,43 +117,43 @@ if check_password():
                         data.columns = data.columns.get_level_values(0)
                     data.columns = [str(c).lower() for c in data.columns]
                     
-                    # 월간 리샘플링 및 최신 10년으로 제한하여 시인성 확보
                     m_data = data[['close']].resample('ME').last().dropna()
-                    return m_data.tail(120) # 최근 10년사
+                    return m_data
                 except:
                     return pd.DataFrame()
 
             chart_df = fetch_trend_data(ticker)
             
-            # [Step 3] 차트 렌더링 (사용자 요청 컬럼명 및 색상 반영)
+            # [Step 3] 차트 렌더링 (사용자 요청: 검정/파랑/빨강 테마)
             if not chart_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 전략 타임라인")
+                st.subheader(f"🏛️ {selected_asset} AI 전략 대시보드")
                 
-                # 데이터 그룹화 (색상 순서: 주가, 목표, 손절 순)
+                # 데이터 그룹화
                 viz_df = pd.DataFrame(index=chart_df.index)
                 viz_df['[실제주가]'] = chart_df['close']
-                viz_df['[익절가/목표]'] = float(asset_info['target_price'])
-                viz_df['[손절가/안전]'] = float(asset_info['stop_loss'])
+                viz_df['[Alpha 매출/매매 목표]'] = float(asset_info['target_price'])
+                viz_df['[Alpha 진입/매수선]'] = float(asset_info['entry_price'])
+                viz_df['[리스크 방어/손절]'] = float(asset_info['stop_loss'])
                 
-                # 차트 출력 (사용자 요청: 검정, 파랑, 빨강)
+                # 차트 출력 (현재가:Black, 매수/매도:Blue range, 손절:Red)
                 st.line_chart(
                     viz_df, 
-                    color=["#000000", "#0000FF", "#FF0000"], 
+                    color=["#000000", "#0000FF", "#00AAFF", "#FF0000"], 
                     height=500
                 )
                 
-                # 🏛️ 차트 가이드 및 의미 설명
-                st.info("""
-                **🏛️ 차트 가이드라인 설명**
-                *   **⚫ 검정색 (실제주가)**: 시장의 실제 가격 흐름입니다. (배경과 대비되어 가장 선명하게 보입니다)
-                *   **🔵 파란색 (익절/매도가)**: 시스템이 제안하는 수익 실현 목표가입니다. 주가가 이 선에 닿으면 수익 확정을 고려합니다.
-                *   **🔴 빨간색 (손절/안전바)**: 예상치 못한 하락 시 자산을 보호하기 위한 최후의 방어선입니다. 주가가 이 아래로 내려가면 리스크 관리를 위해 즉시 매도를 권고합니다.
+                # 🏛️ 전략 가이드
+                st.info(f"""
+                **🏛️ Alpha Engine 전문가 가이드**
+                *   **⚫ 검정색 (실제주가)**: 시장의 현재 흐름입니다.
+                *   **🔵 파란색 계열 (Alpha 매도매수)**: 시스템이 제안하는 **진입가격({asset_info['entry_price']:,.0f})**과 **목표가격({asset_info['target_price']:,.0f})**입니다. 주가가 이 구간 안에서 전략적으로 움직입니다.
+                *   **🔴 빨간색 (손절/안전)**: 예상치 못한 급락 시 자산을 보호하기 위한 **리스크 방어선({asset_info['stop_loss']:,.0f})**입니다.
                 """)
                 
-                # 수치 지표 요약
+                # 수치 지표 정밀 요약
                 m1, m2, m3 = st.columns(3)
-                m2.metric("현재 주가 (Black)", f"{chart_df['close'].iloc[-1]:,.0f}")
-                m1.metric("익절가 (Blue)", f"{asset_info['target_price']:,.0f}")
+                m2.metric("현재가 (Black)", f"{chart_df['close'].iloc[-1]:,.0f}")
+                m1.metric("Alpha 진입/목표 (Blue)", f"{asset_info['entry_price']:,.0f}", delta=f"Target: {asset_info['target_price']:,.0f}")
                 m3.metric("손절가 (Red)", f"{asset_info['stop_loss']:,.0f}")
             else:
                 st.error("데이터 로딩 중 오류가 발생했습니다.")
