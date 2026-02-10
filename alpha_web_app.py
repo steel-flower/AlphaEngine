@@ -107,59 +107,60 @@ if check_password():
             @st.cache_data(ttl=300)
             def get_chart_data(ticker):
                 try:
-                    # [v3.4] 최신 yfinance 구조 완벽 대응
-                    raw_data = yf.download(ticker, period="3mo", interval="1d", auto_adjust=True, progress=False)
+                    # 최신 yfinance 구조 대응 (auto_adjust=True로 데이터 표준화)
+                    raw = yf.download(ticker, period="3mo", interval="1d", auto_adjust=True, progress=False)
+                    if raw.empty: return pd.DataFrame()
                     
-                    if raw_data.empty:
-                        return pd.DataFrame()
+                    # 멀티인덱스 및 컬럼명 정리
+                    temp = raw.copy()
+                    if isinstance(temp.columns, pd.MultiIndex):
+                        temp.columns = temp.columns.get_level_values(0)
                     
-                    # 멀티인덱스(Multi-index) 해제 및 컬럼 정리
-                    temp_df = raw_data.copy()
-                    if isinstance(temp_df.columns, pd.MultiIndex):
-                        temp_df.columns = temp_df.columns.get_level_values(0)
-                    
-                    return temp_df
-                except Exception as e:
+                    # 모든 컬럼명을 소문자로 통일하여 검색 (유연한 대응)
+                    temp.columns = [c.lower() for c in temp.columns]
+                    return temp
+                except Exception:
                     return pd.DataFrame()
             
-            with st.spinner(f"{selected_asset} 차트 분석 중..."):
+            with st.spinner(f"{selected_asset} 리서치 중..."):
                 chart_df = get_chart_data(asset_info['ticker'])
             
-            if not chart_df.empty and len(chart_df) > 0:
-                # 캔들스틱 차트 생성
-                fig = go.Figure()
-                
-                # 컬럼 존재 여부 확인 후 안전하게 그리기
+            if not chart_df.empty:
                 try:
-                    fig.add_trace(go.Candlestick(
-                        x=chart_df.index,
-                        open=chart_df['Open'],
-                        high=chart_df['High'],
-                        low=chart_df['Low'],
-                        close=chart_df['Close'],
-                        name="주가"
-                    ))
+                    # OHLC 컬럼을 이름이 아닌 순서나 키워드로 추출 (매우 중요)
+                    o = chart_df.get('open', pd.Series())
+                    h = chart_df.get('high', pd.Series())
+                    l = chart_df.get('low', pd.Series())
+                    c = chart_df.get('close', pd.Series())
                     
-                    # 목표가/손절가 수평선
-                    fig.add_hline(y=asset_info['target_price'], line_dash="dash", line_color="#00ff88", 
-                                 annotation_text=f"Target: {asset_info['target_price']:,.0f}")
-                    fig.add_hline(y=asset_info['stop_loss'], line_dash="dash", line_color="#ff4b4b", 
-                                 annotation_text=f"StopLoss: {asset_info['stop_loss']:,.0f}")
-                    
-                    fig.update_layout(
-                        title=f"🏛️ {selected_asset} AI 전략 가이드",
-                        template="plotly_dark",
-                        height=500,
-                        margin=dict(l=20, r=20, t=50, b=20),
-                        xaxis_rangeslider_visible=False
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+                    if not c.empty:
+                        fig = go.Figure()
+                        # 캔들스택 데이터가 완전할 때만 실행
+                        if not o.empty and not h.empty:
+                            fig.add_trace(go.Candlestick(
+                                x=chart_df.index, open=o, high=h, low=l, close=c, name="주가"
+                            ))
+                        else:
+                            fig.add_trace(go.Scatter(x=chart_df.index, y=c, mode='lines', line=dict(color='#00ff88')))
+                        
+                        # 목표가/손절가 수평선
+                        fig.add_hline(y=asset_info['target_price'], line_dash="dash", line_color="#00ff88")
+                        fig.add_hline(y=asset_info['stop_loss'], line_dash="dash", line_color="#ff4b4b")
+                        
+                        fig.update_layout(
+                            title=f"🏛️ {selected_asset} AI 전략 대시보드",
+                            template="plotly_dark", height=500, xaxis_rangeslider_visible=False,
+                            margin=dict(l=10, r=10, t=50, b=10)
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.error("차트 데이터를 렌더링할 수 없습니다.")
                 except Exception as e:
-                    # 캔들스틱 실패 시 일반 라인 차트로 대체 (보험)
-                    st.line_chart(chart_df['Close'])
-                    st.warning(f"고급 차트 엔진 오류로 일반 차트로 표시합니다.")
-            else:
-                st.error("데이터 서버 응답 지연으로 차트를 불러올 수 없습니다. 잠시 후 새로고침해 주세요.")
+                    st.line_chart(chart_df) # 최후의 수단
+            
+            # [Fact Check] 데이터 존재 여부 확인용 테이블 (하단 배치)
+            with st.expander("📊 수신된 데이터 로우(Raw) 확인"):
+                st.dataframe(chart_df.tail(10))
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
