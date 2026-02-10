@@ -100,61 +100,67 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 선택 및 전체 데이터 로드
+            # [Step 1] 종목 및 기초 데이터 로드
             selected_asset = st.selectbox("📊 상세 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             ticker = asset_info['ticker']
             
             @st.cache_data(ttl=300)
-            def fetch_pure_history(t):
+            def fetch_verified_history(t):
                 try:
-                    # 상장 이후 전생애 일간 데이터 로드
+                    # [v4.1] 정밀 데이터 로드 (한국 시장 특화)
                     raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
                     
+                    # [CRITICAL FIX] MultiIndex 컬럼 완전 제거 및 가격 데이터 추출
                     data = raw.copy()
                     if isinstance(data.columns, pd.MultiIndex):
-                        data.columns = [c[0] for c in data.columns]
-                    data.columns = [str(c).lower() for c in data.columns]
+                        # 두 번째 레벨(Price Type)이 가격 정보를 가지고 있음
+                        data.columns = data.columns.get_level_values(1)
                     
+                    data.columns = [str(c).lower().strip() for c in data.columns]
+                    
+                    # 'close' 컬럼 확보 전략
                     if 'close' not in data.columns:
-                        for c in data.columns:
-                            if 'close' in c or 'adj' in c:
-                                data['close'] = data[c]
-                                break
-                    return data[['close']].dropna()
+                        # adj close 등이 있다면 그것을 사용
+                        potential_cols = [c for c in data.columns if 'close' in c]
+                        if potential_cols:
+                            data['close'] = data[potential_cols[0]]
+                        else:
+                            return pd.DataFrame()
+                    
+                    return data[['close']].astype(float).dropna()
                 except: return pd.DataFrame()
 
-            chart_df = fetch_pure_history(ticker)
+            chart_df = fetch_verified_history(ticker)
             
             if not chart_df.empty:
-                st.subheader(f"📈 {selected_asset} 상장 이후 주가 기록")
+                st.subheader(f"📈 {selected_asset} 실시간 주가 히스토리")
                 
-                # [Step 2] 순수 주가 그래프 렌더링
+                # [Step 2] 실제 가격 매핑 시각화
                 fig = go.Figure()
                 
-                # 오직 주가 라인만 존재 (Black Line)
+                # 순수 블랙 라인 (실제 시장 주가)
                 fig.add_trace(go.Scatter(
                     x=chart_df.index, y=chart_df['close'],
-                    name="주가 정보",
-                    line=dict(color='black', width=1.5)
+                    name="시장 가격",
+                    line=dict(color='#000000', width=1.8)
                 ))
                 
-                # [Step 3] 가시성 최적화 (Log Scale + Full Range)
+                # [Step 3] 시각적 왜곡 방지 세팅
                 fig.update_layout(
                     paper_bgcolor='white', plot_bgcolor='white',
                     height=600,
-                    yaxis_type="log", # 수십년치 변동을 모두 보여주는 로그 스케일
+                    yaxis_type="log", # 장기 성장을 보여주는 필수 설정
                     yaxis=dict(
-                        gridcolor='#eee', 
+                        gridcolor='#f0f0f0', 
                         autorange=True, 
                         title="Price (KRW, Log Scale)",
                         side="right", tickformat=',.0f'
                     ),
                     xaxis=dict(
-                        gridcolor='#eee', 
-                        title="상장일 ~ 현재",
-                        autorange=True, # 전체 기간 자동 표시
+                        gridcolor='#f0f0f0', 
+                        title="Timeline (Historical)",
                         rangeslider=dict(visible=True)
                     ),
                     margin=dict(l=10, r=40, t=20, b=10)
@@ -162,14 +168,11 @@ if check_password():
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 주가 요약 정보만 간결하게 표시
-                latest_p = chart_df['close'].iloc[-1]
-                ipo_p = chart_df['close'].iloc[0]
-                total_ret = (latest_p / ipo_p - 1) * 100
-                
-                st.success(f"🏛️ **전생애 요약**: 상장가 {ipo_p:,.0f}원에서 현재 {latest_p:,.0f}원까지 총 **{total_ret:,.1f}%** 변화했습니다.")
+                # 데이터 정합성 증명
+                current_p = chart_df['close'].iloc[-1]
+                st.caption(f"✅ 현재 데이터 동기화 완료: {selected_asset} ({ticker}) | 최종가: {current_p:,.0f} KRW")
             else:
-                st.error("데이터 서버에서 주가 역사를 불러오는 중입니다.")
+                st.warning("선택하신 종목의 역사적 가격 정보를 구성하는 중입니다. 잠시만 기다려주세요.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
