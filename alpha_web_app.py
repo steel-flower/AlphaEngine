@@ -100,53 +100,51 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 및 데이터 원본 로드 (Ver. 7.0 "The Truth")
-            selected_asset = st.selectbox("📊 상세 분석 종목 선택", df['name'].tolist())
+            # [Step 1] 종목 선택 및 데이터 직접 호출
+            selected_asset = st.selectbox("📊 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             ticker = asset_info['ticker']
             
+            # [Step 2] 데이터 확보 (기교 없이 순수하게)
             @st.cache_data(ttl=60)
-            def fetch_absolute_prices(t):
+            def fetch_plain_price(t):
                 try:
-                    # 데이터 로드 (최근 10년으로 한정하여 밀도 확보)
-                    data = yf.download(t, period="10y", interval="1d", auto_adjust=True, progress=False)
-                    if data.empty: return pd.DataFrame()
+                    # yfinance에서 최근 5년치 일간 종가만 원본 그대로 가져옴
+                    raw = yf.download(t, period="5y", interval="1d", auto_adjust=True, progress=False)
+                    if raw.empty: return pd.DataFrame()
                     
-                    # MultiIndex 강제 해제 및 'Close' 컬럼 명시적 추출
-                    if isinstance(data.columns, pd.MultiIndex):
-                        data.columns = data.columns.get_level_values(0)
-                    data.columns = [str(c).lower().strip() for c in data.columns]
+                    # MultiIndex 구조라면 최하단 가격 정보만 취득
+                    if isinstance(raw.columns, pd.MultiIndex):
+                        raw.columns = raw.columns.get_level_values(0)
                     
-                    # 'close' 컬럼이 확실히 존재하는지 확인
-                    if 'close' not in data.columns:
-                        return pd.DataFrame()
-                        
-                    res = data[['close']].copy()
-                    return res.dropna()
+                    # 모든 컬럼명을 소문자로 통일하고 'Close'만 추출
+                    raw.columns = [str(c).lower() for c in raw.columns]
+                    if 'close' not in raw.columns: return pd.DataFrame()
+                    
+                    return raw[['close']].astype(float)
                 except: return pd.DataFrame()
 
-            chart_df = fetch_absolute_prices(ticker)
+            price_df = fetch_plain_price(ticker)
             
-            if not chart_df.empty:
-                st.subheader(f"📈 {selected_asset} 실제 시장 주가 (검증 완료)")
+            if not price_df.empty:
+                st.subheader(f"🏛️ {selected_asset} 실데이터 기반 주가 검증")
                 
-                # [Step 2] '방법'의 문제 해결: 인덱스가 아닌 실제 가격(Close)을 Y축으로 강제 매핑
-                # st.line_chart에 데이터프레임을 던지면, 인덱스는 X축, 유일한 컬럼인 'close'는 Y축이 됩니다.
-                st.line_chart(chart_df, use_container_width=True)
+                # [Step 3] 데이터 실명제: 그래프를 그리는 근거 수치 노출
+                st.write("📈 **그래프 생성을 위한 로우 데이터 (최신 7일)**")
+                verify_table = price_df.tail(7).copy()
+                verify_table.index = verify_table.index.strftime('%Y-%m-%d')
+                verify_table.columns = ['종가 (Y축 값)']
+                st.table(verify_table.T)
                 
-                # [Step 3] "주가를 아는가"에 대한 증명: 데이터 테이블 노출
-                st.write("🏛️ **차트 데이터 검증 (실제 가격 수치)**")
-                display_df = chart_df.tail(10).copy()
-                display_df.index = display_df.index.strftime('%Y-%m-%d')
-                display_df.columns = ['실제 종가(Close)']
-                st.dataframe(display_df.T, use_container_width=True)
-                st.caption(f"※ 위 표의 수치가 실제 주가와 일치하는지 확인해 주세요. 그래프는 이 수치를 정직하게 그린 결과입니다.")
+                # [Step 4] "X=시간, Y=가격" 원칙에 따른 선긋기
+                # 기교 없는 st.line_chart를 사용하여 데이터 포인트간의 직선 연결만 허용
+                st.line_chart(price_df['close'], use_container_width=True)
                 
-                # 최신 종가 강조
-                latest_p = chart_df['close'].iloc[-1]
-                st.success(f"✅ 현재 **{ticker}**의 최종 데이터 수신가: **{latest_p:,.0f} KRW** (데이터 서버 시각 기준)")
+                # 결과 보고
+                last_price = price_df['close'].iloc[-1]
+                st.info(f"✅ 위 차트는 **{ticker}**의 실제 데이터 포인트들을 선형(Linear) 눈금 위에 정직하게 연결한 결과입니다. (최종가: {last_price:,.0f} KRW)")
             else:
-                st.error("데이터 서버 점검 중이거나 티커 정보가 올바르지 않습니다.")
+                st.error("데이터 서버 응답 대기 중이거나 티커명이 올바르지 않습니다.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
