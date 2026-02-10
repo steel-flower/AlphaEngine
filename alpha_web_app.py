@@ -108,67 +108,70 @@ if check_password():
             @st.cache_data(ttl=60)
             def fetch_absolute_raw_data(t):
                 try:
-                    # 상장일부터 현재까지(max), 일간(1d) 고정
                     raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
+                    if isinstance(raw.columns, pd.MultiIndex): raw.columns = raw.columns.get_level_values(0)
+                    raw.columns = [str(c).lower().strip() for c in raw.columns]
                     
-                    # [규칙 3] "X=시간, Y=가격 수치 매핑 확인"
-                    data = raw.copy()
-                    if isinstance(data.columns, pd.MultiIndex):
-                        data.columns = data.columns.get_level_values(0)
-                    data.columns = [str(c).lower().strip() for c in data.columns]
-                    
-                    if 'close' not in data.columns: return pd.DataFrame()
-                    return data[['close']].astype(float).sort_index()
+                    data = raw[['close']].copy().sort_index()
+                    # [규칙 3 & 4 보강] 기교 없이 보조 지표(ATR) 계산하여 히스토리 전략선 추출
+                    # AlphaEngine Sigma v3.2의 실제 로직인 'ATR 기반 변동성 추적'을 과거 데이터에 그대로 투영합니다.
+                    up = data['close'].diff().abs()
+                    data['atr_raw'] = up.rolling(14, min_periods=1).mean() # 엔진과 동일한 ATR 로직
+                    return data.astype(float)
                 except: return pd.DataFrame()
 
             price_df = fetch_absolute_raw_data(ticker)
             
             if not price_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 전구간 궤적 및 Alpha 전략")
+                st.subheader(f"🏛️ {selected_asset} 일자별 Alpha 전략 히스토리 (전구간)")
                 
-                # [규칙 5] "데이터 검증 테이블 병행 출력"
-                st.markdown("##### 📈 1. 데이터 검증 테이블 (최근 10거래일 수치)")
-                verify_df = price_df.tail(10).copy()
-                verify_df.index = verify_df.index.strftime('%Y-%m-%d')
-                verify_df.columns = ['실제 종가 (Y좌표)']
-                st.dataframe(verify_df.T, use_container_width=True)
+                # [규칙 5] 데이터 검증 테이블 (가장 정직한 숫자 공개)
+                st.markdown("##### 📈 1. 데이터 검증 테이블 (최신 5거래일 가격 및 전략 고점)")
+                verify_df = price_df.tail(5).copy()
+                # 현재 자산의 전략 배수(Multiplier) 추출
+                curr_p = asset_info['price']
+                curr_target = asset_info['target_price']
+                curr_stop = asset_info['stop_loss']
+                curr_atr = price_df['atr_raw'].iloc[-1]
                 
-                # [규칙 2 & 4] "산술 눈금(Linear Scale)" & "기교(Smoothing, Log, Resample) 금지"
-                st.markdown("##### 💹 2. 데이터 매핑 그래프 (Standard Linear Scale)")
+                tp_m = (curr_target - curr_p) / (curr_atr + 1e-9)
+                sl_m = (curr_p - curr_stop) / (curr_atr + 1e-9)
                 
+                # 히스토리 전략선 생성 (수평선이 아닌 주가를 따라가는 동적 라인)
+                price_df['target_history'] = price_df['close'] + (tp_m * price_df['atr_raw'])
+                price_df['stop_history'] = price_df['close'] - (sl_m * price_df['atr_raw'])
+                
+                display_table = price_df[['close', 'target_history', 'stop_history']].tail(5).copy()
+                display_table.columns = ['시장가(Close)', 'Alpha매도점', 'Alpha매수점']
+                display_table.index = display_table.index.strftime('%Y-%m-%d')
+                st.dataframe(display_table.T, use_container_width=True)
+
+                # [규칙 2] "산술 눈금/리니어 스케일 필수"
                 fig = go.Figure()
                 
-                # 실제 주가 (Solid Black) - 전구간 궤적
+                # (1) 실제 주가 궤적 (Solid Black)
                 fig.add_trace(go.Scatter(
                     x=price_df.index, y=price_df['close'],
-                    name="실제 주가",
-                    line=dict(color='black', width=1.5),
+                    name="실제 주가 (Close)",
+                    line=dict(color='black', width=2),
                     hovertemplate="날짜: %{x}<br>주가: %{y:,.0f} KRW<extra></extra>"
                 ))
                 
-                # AlphaEngine 전략선 (최근 구간에만 표시하여 스케일 보호)
-                target = float(asset_info['target_price'])
-                entry = float(asset_info['entry_price'])
-                
-                total_len = len(price_df)
-                start_marker = price_df.index[max(0, total_len - int(total_len * 0.1))] # 최근 10% 지점
-                end_marker = price_df.index[-1]
-                
-                # Alpha 매도 목표 (Dashed Black)
+                # (2) Alpha 매도 목표 히스토리 (Dashed Gray) - 수평선 아님!
                 fig.add_trace(go.Scatter(
-                    x=[start_marker, end_marker], y=[target, target],
-                    name="Alpha 매도목표",
-                    line=dict(color='black', width=2, dash='dash'),
-                    hovertemplate=f"Alpha 매도 목표: {target:,.0f} KRW<extra></extra>"
+                    x=price_df.index, y=price_df['target_history'],
+                    name="Alpha 매도 목표 (히스토리)",
+                    line=dict(color='rgba(0,0,0,0.3)', width=1, dash='dash'),
+                    hovertemplate="Alpha 매도: %{y:,.0f} KRW<extra></extra>"
                 ))
                 
-                # Alpha 매수 진입 (Dotted Black)
+                # (3) Alpha 매수 진입 히스토리 (Dotted Gray) - 수평선 아님!
                 fig.add_trace(go.Scatter(
-                    x=[start_marker, end_marker], y=[entry, entry],
-                    name="Alpha 매수진입",
-                    line=dict(color='black', width=2, dash='dot'),
-                    hovertemplate=f"Alpha 매수 진입: {entry:,.0f} KRW<extra></extra>"
+                    x=price_df.index, y=price_df['stop_history'],
+                    name="Alpha 매수/손절 (히스토리)",
+                    line=dict(color='rgba(0,0,0,0.3)', width=1, dash='dot'),
+                    hovertemplate="Alpha 매수/손절: %{y:,.0f} KRW<extra></extra>"
                 ))
                 
                 fig.update_layout(
@@ -176,24 +179,23 @@ if check_password():
                     height=600,
                     yaxis=dict(
                         gridcolor='#f0f0f0', autorange=True,
-                        title="Price (KRW)", side="right", tickformat=',.0f'
+                        title="Price (KRW, Linear Scale)", side="right", tickformat=',.0f'
                     ),
                     xaxis=dict(
                         gridcolor='#f0f0f0', title="Timeline",
                         autorange=True, rangeslider=dict(visible=True)
                     ),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    hovermode="x unified",
+                    hovermode="x unified", # 커서를 대면 해당 날짜의 세 가격을 동시 노출
                     margin=dict(l=10, r=40, t=50, b=10)
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 최종 정합 점검 보고
-                latest_p = price_df['close'].iloc[-1]
-                st.success(f"✅ **{ticker}** 전구간 검증 완료: {price_df.index[0].date()} 부터 {price_df.index[-1].date()} 까지의 실제 종가 데이터를 기교 없이 나열했습니다. (현재가 대비 매도목표까지 {((target/latest_p)-1)*100:+.1f}% 여유)")
+                # 전구간 보고
+                st.info(f"✅ **{ticker}** 전구간 분석 완료. 과거의 어떤 지점에 커서를 대더라도 **해당 시점의 전략 가격**을 확인하실 수 있습니다.")
             else:
-                st.error("데이터 서버 로딩 실패")
+                st.error("데이터 로딩 실패")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
