@@ -107,49 +107,59 @@ if check_password():
             @st.cache_data(ttl=300)
             def get_chart_data(ticker):
                 try:
-                    # 데이터 호출
-                    temp_df = yf.download(ticker, period="3mo", interval="1d", progress=False)
-                    # [v3.4 FIX] 최근 yfinance의 멀티인덱스 컬럼 문제를 해결하기 위해 컬럼 평탄화
+                    # [v3.4] 최신 yfinance 구조 완벽 대응
+                    raw_data = yf.download(ticker, period="3mo", interval="1d", auto_adjust=True, progress=False)
+                    
+                    if raw_data.empty:
+                        return pd.DataFrame()
+                    
+                    # 멀티인덱스(Multi-index) 해제 및 컬럼 정리
+                    temp_df = raw_data.copy()
                     if isinstance(temp_df.columns, pd.MultiIndex):
                         temp_df.columns = temp_df.columns.get_level_values(0)
+                    
                     return temp_df
                 except Exception as e:
                     return pd.DataFrame()
             
-            with st.spinner(f"{selected_asset} 차트 데이터를 불러오는 중..."):
+            with st.spinner(f"{selected_asset} 차트 분석 중..."):
                 chart_df = get_chart_data(asset_info['ticker'])
             
-            # 차트 렌더링 검증
             if not chart_df.empty and len(chart_df) > 0:
+                # 캔들스틱 차트 생성
                 fig = go.Figure()
-                fig.add_trace(go.Candlestick(
-                    x=chart_df.index,
-                    open=chart_df['Open'],
-                    high=chart_df['High'],
-                    low=chart_df['Low'],
-                    close=chart_df['Close'],
-                    name="Price"
-                ))
                 
-                # 목표가/손절가 라인 등 UI 설정
-                fig.add_hline(y=asset_info['target_price'], line_dash="dash", line_color="#00ff88", annotation_text="Target")
-                fig.add_hline(y=asset_info['stop_loss'], line_dash="dash", line_color="#ff4b4b", annotation_text="StopLoss")
-                
-                fig.update_layout(
-                    title=f"{selected_asset} 전략 가이드 (Target: {asset_info['target_price']:,.0f})",
-                    template="plotly_dark",
-                    height=500,
-                    margin=dict(l=20, r=20, t=50, b=20),
-                    xaxis_rangeslider_visible=True # 원활한 스캔을 위해 다시 활성화
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # [DEBUG] 데이터 확인용 (성공 시엔 숨겨짐)
-                with st.expander(f"📊 {selected_asset} 원본 데이터 확인"):
-                    st.write(chart_df.tail())
+                # 컬럼 존재 여부 확인 후 안전하게 그리기
+                try:
+                    fig.add_trace(go.Candlestick(
+                        x=chart_df.index,
+                        open=chart_df['Open'],
+                        high=chart_df['High'],
+                        low=chart_df['Low'],
+                        close=chart_df['Close'],
+                        name="주가"
+                    ))
+                    
+                    # 목표가/손절가 수평선
+                    fig.add_hline(y=asset_info['target_price'], line_dash="dash", line_color="#00ff88", 
+                                 annotation_text=f"Target: {asset_info['target_price']:,.0f}")
+                    fig.add_hline(y=asset_info['stop_loss'], line_dash="dash", line_color="#ff4b4b", 
+                                 annotation_text=f"StopLoss: {asset_info['stop_loss']:,.0f}")
+                    
+                    fig.update_layout(
+                        title=f"🏛️ {selected_asset} AI 전략 가이드",
+                        template="plotly_dark",
+                        height=500,
+                        margin=dict(l=20, r=20, t=50, b=20),
+                        xaxis_rangeslider_visible=False
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    # 캔들스틱 실패 시 일반 라인 차트로 대체 (보험)
+                    st.line_chart(chart_df['Close'])
+                    st.warning(f"고급 차트 엔진 오류로 일반 차트로 표시합니다.")
             else:
-                st.error(f"차트 데이터를 불러올 수 없습니다 ({asset_info['ticker']}).")
-                st.info("데이터가 비어있거나 야후 서버 점검 중일 수 있습니다. (장 종료 후 데이터 집계 시간 등)")
+                st.error("데이터 서버 응답 지연으로 차트를 불러올 수 없습니다. 잠시 후 새로고침해 주세요.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
