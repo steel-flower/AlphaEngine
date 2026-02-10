@@ -103,15 +103,19 @@ if check_password():
             selected_asset = st.selectbox("상세 차트 분석 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             
-            # Yfinance 차트 데이터 가져오기 (최근 1개월)
+            # Yfinance 차트 데이터 가져오기 (최근 3개월로 확대)
             @st.cache_data(ttl=300)
             def get_chart_data(ticker):
-                d = yf.download(ticker, period="1mo", interval="1d")
-                return d
+                try:
+                    d = yf.download(ticker, period="3mo", interval="1d", progress=False)
+                    return d
+                except Exception as e:
+                    return pd.DataFrame()
             
-            chart_df = get_chart_data(asset_info['ticker'])
+            with st.spinner(f"{selected_asset} 차트 데이터를 불러오는 중..."):
+                chart_df = get_chart_data(asset_info['ticker'])
             
-            if not chart_df.empty:
+            if not chart_df.empty and len(chart_df) > 0:
                 fig = go.Figure()
                 fig.add_trace(go.Candlestick(
                     x=chart_df.index,
@@ -127,12 +131,16 @@ if check_password():
                 fig.add_hline(y=asset_info['stop_loss'], line_dash="dash", line_color="#ff4b4b", annotation_text="StopLoss")
                 
                 fig.update_layout(
-                    title=f"{selected_asset} 실시간 전략 가이드",
+                    title=f"{selected_asset} 전략 가이드 (Target: {asset_info['target_price']:,.0f})",
                     template="plotly_dark",
-                    height=450,
-                    margin=dict(l=20, r=20, t=50, b=20)
+                    height=500,
+                    margin=dict(l=20, r=20, t=50, b=20),
+                    xaxis_rangeslider_visible=False
                 )
                 st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.error(f"차트 데이터를 불러올 수 없습니다 ({asset_info['ticker']}). 잠시 후 다시 시도해 주세요.")
+                st.info("야후 파이낸스(yfinance) 서버 연결이 원활하지 않을 수 있습니다.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
