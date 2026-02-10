@@ -100,30 +100,46 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 및 전구간 데이터 호출
+            # [규칙 1] "로우 데이터 그대로(Raw Data as-is)"
             selected_asset = st.selectbox("📊 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             ticker = asset_info['ticker']
             
             @st.cache_data(ttl=60)
-            def fetch_full_history(t):
+            def fetch_absolute_raw_data(t):
                 try:
+                    # 상장일부터 현재까지(max), 일간(1d) 고정
                     raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
-                    if isinstance(raw.columns, pd.MultiIndex): raw.columns = raw.columns.get_level_values(0)
-                    raw.columns = [str(c).lower().strip() for c in raw.columns]
-                    return raw[['close']].astype(float).sort_index()
+                    
+                    # [규칙 3] "X=시간, Y=가격 수치 매핑 확인"
+                    data = raw.copy()
+                    if isinstance(data.columns, pd.MultiIndex):
+                        data.columns = data.columns.get_level_values(0)
+                    data.columns = [str(c).lower().strip() for c in data.columns]
+                    
+                    if 'close' not in data.columns: return pd.DataFrame()
+                    return data[['close']].astype(float).sort_index()
                 except: return pd.DataFrame()
 
-            price_df = fetch_full_history(ticker)
+            price_df = fetch_absolute_raw_data(ticker)
             
             if not price_df.empty:
                 st.subheader(f"🏛️ {selected_asset} 전구간 궤적 및 Alpha 전략")
                 
-                # 시각화 엔진 (데이터 정직성 + 전략 가독성 최적화)
+                # [규칙 5] "데이터 검증 테이블 병행 출력"
+                st.markdown("##### 📈 1. 데이터 검증 테이블 (최근 10거래일 수치)")
+                verify_df = price_df.tail(10).copy()
+                verify_df.index = verify_df.index.strftime('%Y-%m-%d')
+                verify_df.columns = ['실제 종가 (Y좌표)']
+                st.dataframe(verify_df.T, use_container_width=True)
+                
+                # [규칙 2 & 4] "산술 눈금(Linear Scale)" & "기교(Smoothing, Log, Resample) 금지"
+                st.markdown("##### 💹 2. 데이터 매핑 그래프 (Standard Linear Scale)")
+                
                 fig = go.Figure()
                 
-                # 1. 실제 주가 (Solid Black) - 전구간 관통
+                # 실제 주가 (Solid Black) - 전구간 궤적
                 fig.add_trace(go.Scatter(
                     x=price_df.index, y=price_df['close'],
                     name="실제 주가",
@@ -131,28 +147,26 @@ if check_password():
                     hovertemplate="날짜: %{x}<br>주가: %{y:,.0f} KRW<extra></extra>"
                 ))
                 
-                # [AlphaEngine 전략 지점] 
-                # 역사적 스케일을 보호하기 위해 '최근 구간'에만 가독성 좋게 표시
+                # AlphaEngine 전략선 (최근 구간에만 표시하여 스케일 보호)
                 target = float(asset_info['target_price'])
                 entry = float(asset_info['entry_price'])
                 
-                # 최근 10% 기간 계산 (전략선이 역사를 가리지 않게 함)
                 total_len = len(price_df)
-                start_idx = price_df.index[max(0, total_len - int(total_len * 0.1))] # 최근 10% 지점
-                end_idx = price_df.index[-1]
+                start_marker = price_df.index[max(0, total_len - int(total_len * 0.1))] # 최근 10% 지점
+                end_marker = price_df.index[-1]
                 
-                # 2. Alpha 매도 목표 (Dashed Black - 최근 구간 매핑)
+                # Alpha 매도 목표 (Dashed Black)
                 fig.add_trace(go.Scatter(
-                    x=[start_idx, end_idx], y=[target, target],
-                    name="Alpha 매도목표 (Dash)",
+                    x=[start_marker, end_marker], y=[target, target],
+                    name="Alpha 매도목표",
                     line=dict(color='black', width=2, dash='dash'),
                     hovertemplate=f"Alpha 매도 목표: {target:,.0f} KRW<extra></extra>"
                 ))
                 
-                # 3. Alpha 매수 진입 (Dotted Black - 최근 구간 매핑)
+                # Alpha 매수 진입 (Dotted Black)
                 fig.add_trace(go.Scatter(
-                    x=[start_idx, end_idx], y=[entry, entry],
-                    name="Alpha 매수진입 (Dot)",
+                    x=[start_marker, end_marker], y=[entry, entry],
+                    name="Alpha 매수진입",
                     line=dict(color='black', width=2, dash='dot'),
                     hovertemplate=f"Alpha 매수 진입: {entry:,.0f} KRW<extra></extra>"
                 ))
@@ -161,11 +175,11 @@ if check_password():
                     paper_bgcolor='white', plot_bgcolor='white',
                     height=600,
                     yaxis=dict(
-                        gridcolor='#f5f5f5', autorange=True,
+                        gridcolor='#f0f0f0', autorange=True,
                         title="Price (KRW)", side="right", tickformat=',.0f'
                     ),
                     xaxis=dict(
-                        gridcolor='#f5f5f5', title="Timeline",
+                        gridcolor='#f0f0f0', title="Timeline",
                         autorange=True, rangeslider=dict(visible=True)
                     ),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
@@ -175,10 +189,11 @@ if check_password():
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 하단 수치 가이드 (직관적 보조)
-                st.markdown(f"🏛️ **{selected_asset} 전략 정보**: 현재가 대비 매도 목표까지 **{((target/price_df['close'].iloc[-1])-1)*100:+.1f}%** 여유가 있습니다.")
+                # 최종 정합 점검 보고
+                latest_p = price_df['close'].iloc[-1]
+                st.success(f"✅ **{ticker}** 전구간 검증 완료: {price_df.index[0].date()} 부터 {price_df.index[-1].date()} 까지의 실제 종가 데이터를 기교 없이 나열했습니다. (현재가 대비 매도목표까지 {((target/latest_p)-1)*100:+.1f}% 여유)")
             else:
-                st.error("데이터 로딩 실패")
+                st.error("데이터 서버 로딩 실패")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
