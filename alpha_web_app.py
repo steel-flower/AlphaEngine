@@ -103,18 +103,23 @@ if check_password():
             selected_asset = st.selectbox("상세 차트 분석 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             
-            # Yfinance 차트 데이터 가져오기 (최근 3개월로 확대)
+            # Yfinance 차트 데이터 가져오기
             @st.cache_data(ttl=300)
             def get_chart_data(ticker):
                 try:
-                    d = yf.download(ticker, period="3mo", interval="1d", progress=False)
-                    return d
+                    # 데이터 호출
+                    temp_df = yf.download(ticker, period="3mo", interval="1d", progress=False)
+                    # [v3.4 FIX] 최근 yfinance의 멀티인덱스 컬럼 문제를 해결하기 위해 컬럼 평탄화
+                    if isinstance(temp_df.columns, pd.MultiIndex):
+                        temp_df.columns = temp_df.columns.get_level_values(0)
+                    return temp_df
                 except Exception as e:
                     return pd.DataFrame()
             
             with st.spinner(f"{selected_asset} 차트 데이터를 불러오는 중..."):
                 chart_df = get_chart_data(asset_info['ticker'])
             
+            # 차트 렌더링 검증
             if not chart_df.empty and len(chart_df) > 0:
                 fig = go.Figure()
                 fig.add_trace(go.Candlestick(
@@ -126,7 +131,7 @@ if check_password():
                     name="Price"
                 ))
                 
-                # 목표가/손절가 라인 추가
+                # 목표가/손절가 라인 등 UI 설정
                 fig.add_hline(y=asset_info['target_price'], line_dash="dash", line_color="#00ff88", annotation_text="Target")
                 fig.add_hline(y=asset_info['stop_loss'], line_dash="dash", line_color="#ff4b4b", annotation_text="StopLoss")
                 
@@ -135,12 +140,16 @@ if check_password():
                     template="plotly_dark",
                     height=500,
                     margin=dict(l=20, r=20, t=50, b=20),
-                    xaxis_rangeslider_visible=False
+                    xaxis_rangeslider_visible=True # 원활한 스캔을 위해 다시 활성화
                 )
                 st.plotly_chart(fig, use_container_width=True)
+                
+                # [DEBUG] 데이터 확인용 (성공 시엔 숨겨짐)
+                with st.expander(f"📊 {selected_asset} 원본 데이터 확인"):
+                    st.write(chart_df.tail())
             else:
-                st.error(f"차트 데이터를 불러올 수 없습니다 ({asset_info['ticker']}). 잠시 후 다시 시도해 주세요.")
-                st.info("야후 파이낸스(yfinance) 서버 연결이 원활하지 않을 수 있습니다.")
+                st.error(f"차트 데이터를 불러올 수 없습니다 ({asset_info['ticker']}).")
+                st.info("데이터가 비어있거나 야후 서버 점검 중일 수 있습니다. (장 종료 후 데이터 집계 시간 등)")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
