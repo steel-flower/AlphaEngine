@@ -100,15 +100,15 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 선택 및 데이터 로드 (일간 차트)
+            # [Step 1] 종목 선택 및 전체 데이터 로드
             selected_asset = st.selectbox("📊 상세 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             ticker = asset_info['ticker']
             
             @st.cache_data(ttl=300)
-            def fetch_daily_history(t):
+            def fetch_pure_history(t):
                 try:
-                    # [v4.0] 사용자 요청: 정밀 일간 데이터 원본 로드
+                    # 상장 이후 전생애 일간 데이터 로드
                     raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
                     
@@ -125,84 +125,51 @@ if check_password():
                     return data[['close']].dropna()
                 except: return pd.DataFrame()
 
-            chart_df = fetch_daily_history(ticker)
+            chart_df = fetch_pure_history(ticker)
             
             if not chart_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 실시간 일간 분석 캔버스")
+                st.subheader(f"📈 {selected_asset} 상장 이후 주가 기록")
                 
-                # 수치 변수
-                prices = chart_df['close']
-                curr = prices.iloc[-1]
-                target = float(asset_info['target_price'])
-                stop = float(asset_info['stop_loss'])
-                
-                # [Step 2] 고해상도 일간 렌더링
+                # [Step 2] 순수 주가 그래프 렌더링
                 fig = go.Figure()
                 
-                # 메인 주가 (일간 데일리 라인)
+                # 오직 주가 라인만 존재 (Black Line)
                 fig.add_trace(go.Scatter(
-                    x=chart_df.index, y=prices,
-                    name="일간 주가 흐름",
-                    line=dict(color='black', width=1) # 데일리는 선을 조금 얇게 하여 디테일 살림
+                    x=chart_df.index, y=chart_df['close'],
+                    name="주가 정보",
+                    line=dict(color='black', width=1.5)
                 ))
                 
-                # 전략선 구간 한정 (최근 60일 혹은 전체 10% 중 긴 쪽 선택)
-                display_len = max(60, int(len(chart_df) * 0.1))
-                segment_x = chart_df.index[-display_len:]
-                
-                fig.add_trace(go.Scatter(
-                    x=segment_x, y=[target] * len(segment_x),
-                    name="Alpha Goal (Blue)",
-                    line=dict(color='blue', width=2, dash='dash'),
-                    mode='lines+text', text=["", f"Goal {target:,.0f}"], textposition="top left"
-                ))
-                
-                fig.add_trace(go.Scatter(
-                    x=segment_x, y=[stop] * len(segment_x),
-                    name="Risk Floor (Red)",
-                    line=dict(color='red', width=2, dash='dot'),
-                    mode='lines+text', text=["", f"Stop {stop:,.0f}"], textposition="bottom left"
-                ))
-
-                # [Step 3] 시야 최적화 (최근 1년치 집중 조명)
-                # 초기 범위를 최근 1년으로 설정하여 일간 변동성이 즉시 보이게 함
-                one_year_ago = chart_df.index[-1] - pd.Timedelta(days=365)
-                recent_p = chart_df.loc[chart_df.index >= one_year_ago, 'close']
-                if recent_p.empty: recent_p = prices.tail(100)
-                
-                y_min = min(recent_p.min(), stop) * 0.98
-                y_max = max(recent_p.max(), target) * 1.02
-                
+                # [Step 3] 가시성 최적화 (Log Scale + Full Range)
                 fig.update_layout(
                     paper_bgcolor='white', plot_bgcolor='white',
                     height=600,
-                    yaxis_type="log", # 장기 데이터의 선형 뭉침 방지
+                    yaxis_type="log", # 수십년치 변동을 모두 보여주는 로그 스케일
                     yaxis=dict(
                         gridcolor='#eee', 
-                        autorange=False, 
-                        range=[np.log10(y_min), np.log10(y_max)] if y_min > 0 else None,
-                        title="Price (KRW, Daily Log Scale)",
+                        autorange=True, 
+                        title="Price (KRW, Log Scale)",
                         side="right", tickformat=',.0f'
                     ),
                     xaxis=dict(
                         gridcolor='#eee', 
-                        title="Timeline",
-                        range=[one_year_ago, chart_df.index[-1]], # 초기 시야: 최근 1년
-                        rangeslider=dict(visible=True) # 전 기간 수동 탐색 가능
+                        title="상장일 ~ 현재",
+                        autorange=True, # 전체 기간 자동 표시
+                        rangeslider=dict(visible=True)
                     ),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    margin=dict(l=10, r=40, t=50, b=10)
+                    margin=dict(l=10, r=40, t=20, b=10)
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 수치 브리핑
-                c1, c2, c3 = st.columns(3)
-                c2.info(f"💎 현재가: {curr:,.0f}")
-                c1.success(f"🎯 목표가: {target:,.0f}")
-                c3.error(f"🛑 손절가: {stop:,.0f}")
+                # 주가 요약 정보만 간결하게 표시
+                latest_p = chart_df['close'].iloc[-1]
+                ipo_p = chart_df['close'].iloc[0]
+                total_ret = (latest_p / ipo_p - 1) * 100
+                
+                st.success(f"🏛️ **전생애 요약**: 상장가 {ipo_p:,.0f}원에서 현재 {latest_p:,.0f}원까지 총 **{total_ret:,.1f}%** 변화했습니다.")
             else:
-                st.error("데이터 서버 로딩 실패 (종목 시스템 점검 중)")
+                st.error("데이터 서버에서 주가 역사를 불러오는 중입니다.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
