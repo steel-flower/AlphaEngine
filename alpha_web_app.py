@@ -100,59 +100,64 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 선택 및 정보 추출
+            # [Step 1] 종목 선택 및 전략 정보 추출
             selected_asset = st.selectbox("📊 상세 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             ticker = asset_info['ticker']
             
-            # [Step 2] 데이터 로드 (가장 단순하고 확실한 방식)
+            # [Step 2] 데이터 로드 (월간 트렌드)
             @st.cache_data(ttl=300)
-            def fetch_simple_data(t):
+            def fetch_trend_data(t):
                 try:
-                    # 일간 데이터를 가져와서 강제로 평탄화
-                    raw = yf.download(t, period="5y", interval="1d", auto_adjust=True, progress=False)
+                    # 상장 이후 전체 데이터를 가져와서 월간으로 정제
+                    raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
                     
-                    # 컬럼 정리 (MultiIndex 방어)
                     data = raw.copy()
                     if isinstance(data.columns, pd.MultiIndex):
                         data.columns = data.columns.get_level_values(0)
                     data.columns = [str(c).lower() for c in data.columns]
                     
-                    # 월간 리샘플링
+                    # 월간 리샘플링 및 최신 10년으로 제한하여 시인성 확보
                     m_data = data[['close']].resample('ME').last().dropna()
-                    return m_data
+                    return m_data.tail(120) # 최근 10년사
                 except:
                     return pd.DataFrame()
 
-            chart_df = fetch_simple_data(ticker)
+            chart_df = fetch_trend_data(ticker)
             
-            # [Step 3] 차트 렌더링 (가장 시인성 높은 기본형으로 회귀)
+            # [Step 3] 차트 렌더링 (사용자 요청 컬럼명 및 색상 반영)
             if not chart_df.empty:
-                st.subheader(f"📈 {selected_asset} 실시간 추세 분석")
+                st.subheader(f"🏛️ {selected_asset} 전략 타임라인")
                 
-                # Plotly 엔진의 복잡한 설정을 버리고 Streamlit의 순정 차트로 승부
-                # 시인성 확보를 위해 목표가/손절가를 차트 데이터에 합쳐서 전송
-                viz_df = chart_df.copy()
-                viz_df['Target'] = float(asset_info['target_price'])
-                viz_df['StopLoss'] = float(asset_info['stop_loss'])
+                # 데이터 그룹화 (색상 순서: 주가, 목표, 손절 순)
+                viz_df = pd.DataFrame(index=chart_df.index)
+                viz_df['[실제주가]'] = chart_df['close']
+                viz_df['[익절가/목표]'] = float(asset_info['target_price'])
+                viz_df['[손절가/안전]'] = float(asset_info['stop_loss'])
                 
-                # 사용자 요청 색상 반영 (흰색/파란색/빨간색)
+                # 차트 출력 (사용자 요청: 검정, 파랑, 빨강)
                 st.line_chart(
                     viz_df, 
-                    color=["#FFFFFF", "#0088ff", "#ff4b4b"], # 현재가(White), 목표(Blue), 손절(Red)
-                    height=450
+                    color=["#000000", "#0000FF", "#FF0000"], 
+                    height=500
                 )
                 
-                # 하단에 큰 수치로 정보 보강
-                c1, c2, c3 = st.columns(3)
-                c2.metric("현재가 (🏳️White)", f"{chart_df['close'].iloc[-1]:,.0f}")
-                c1.metric("목표가 (🎯Blue)", f"{asset_info['target_price']:,.0f}")
-                c3.metric("손절가 (🛑Red)", f"{asset_info['stop_loss']:,.0f}")
+                # 🏛️ 차트 가이드 및 의미 설명
+                st.info("""
+                **🏛️ 차트 가이드라인 설명**
+                *   **⚫ 검정색 (실제주가)**: 시장의 실제 가격 흐름입니다. (배경과 대비되어 가장 선명하게 보입니다)
+                *   **🔵 파란색 (익절/매도가)**: 시스템이 제안하는 수익 실현 목표가입니다. 주가가 이 선에 닿으면 수익 확정을 고려합니다.
+                *   **🔴 빨간색 (손절/안전바)**: 예상치 못한 하락 시 자산을 보호하기 위한 최후의 방어선입니다. 주가가 이 아래로 내려가면 리스크 관리를 위해 즉시 매도를 권고합니다.
+                """)
                 
-                st.caption("※ 그래프가 너무 뭉쳐 보일 경우, 마우스 휠로 확대/축소하거나 우측 상단 메뉴에서 전체 화면으로 보실 수 있습니다.")
+                # 수치 지표 요약
+                m1, m2, m3 = st.columns(3)
+                m2.metric("현재 주가 (Black)", f"{chart_df['close'].iloc[-1]:,.0f}")
+                m1.metric("익절가 (Blue)", f"{asset_info['target_price']:,.0f}")
+                m3.metric("손절가 (Red)", f"{asset_info['stop_loss']:,.0f}")
             else:
-                st.error("차트 데이터를 불러오는 데 실패했습니다. 종목 코드를 확인하세요.")
+                st.error("데이터 로딩 중 오류가 발생했습니다.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
