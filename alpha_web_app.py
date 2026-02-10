@@ -107,8 +107,8 @@ if check_password():
             @st.cache_data(ttl=300)
             def get_chart_data(ticker):
                 try:
-                    # 데이터 호출 (최근 6개월로 기간 확대)
-                    temp = yf.download(ticker, period="6mo", interval="1d", auto_adjust=True, progress=False)
+                    # 데이터 호출 (상장 이후 전체 기간 'max'로 확대)
+                    temp = yf.download(ticker, period="max", interval="1d", auto_adjust=True, progress=False)
                     if temp.empty: return pd.DataFrame()
                     
                     # 멀티인덱스 해제 및 컬럼 표준화
