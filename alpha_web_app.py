@@ -100,51 +100,51 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 선택 및 데이터 직접 호출
+            # [Step 1] 종목 선택 및 상장 이후 전생애 데이터 호출
             selected_asset = st.selectbox("📊 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             ticker = asset_info['ticker']
             
-            # [Step 2] 데이터 확보 (기교 없이 순수하게)
+            # [Step 2] 데이터 확보 (상장일부터 현재까지, 원본 그대로)
             @st.cache_data(ttl=60)
-            def fetch_plain_price(t):
+            def fetch_max_history(t):
                 try:
-                    # yfinance에서 최근 5년치 일간 종가만 원본 그대로 가져옴
-                    raw = yf.download(t, period="5y", interval="1d", auto_adjust=True, progress=False)
+                    # yfinance에서 상장 이후(max) 일간 종가 원본 로드
+                    raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
                     
-                    # MultiIndex 구조라면 최하단 가격 정보만 취득
+                    # MultiIndex 구조 정규화
                     if isinstance(raw.columns, pd.MultiIndex):
                         raw.columns = raw.columns.get_level_values(0)
                     
-                    # 모든 컬럼명을 소문자로 통일하고 'Close'만 추출
                     raw.columns = [str(c).lower() for c in raw.columns]
                     if 'close' not in raw.columns: return pd.DataFrame()
                     
                     return raw[['close']].astype(float)
                 except: return pd.DataFrame()
 
-            price_df = fetch_plain_price(ticker)
+            price_df = fetch_max_history(ticker)
             
             if not price_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 실데이터 기반 주가 검증")
+                st.subheader(f"📈 {selected_asset} 상장 이후 실제 주가 궤적")
                 
-                # [Step 3] 데이터 실명제: 그래프를 그리는 근거 수치 노출
-                st.write("📈 **그래프 생성을 위한 로우 데이터 (최신 7일)**")
-                verify_table = price_df.tail(7).copy()
+                # [Step 3] 데이터 실명제: 그래프의 근본이 되는 숫자 공개
+                st.write("🏛️ **차트 생성 데이터 검증 (최근 10일 수치)**")
+                verify_table = price_df.tail(10).copy()
                 verify_table.index = verify_table.index.strftime('%Y-%m-%d')
-                verify_table.columns = ['종가 (Y축 값)']
-                st.table(verify_table.T)
+                verify_table.columns = ['종가 (Y축 높이)']
+                st.dataframe(verify_table.T, use_container_width=True)
                 
-                # [Step 4] "X=시간, Y=가격" 원칙에 따른 선긋기
-                # 기교 없는 st.line_chart를 사용하여 데이터 포인트간의 직선 연결만 허용
+                # [Step 4] "X=시간, Y=가격" 절대 원칙에 따른 렌더링
+                # Log Scale, Smoothing, Padding 모두 제거하고 산술 눈금에 데이터 포인트만 찍어 연결
                 st.line_chart(price_df['close'], use_container_width=True)
                 
-                # 결과 보고
-                last_price = price_df['close'].iloc[-1]
-                st.info(f"✅ 위 차트는 **{ticker}**의 실제 데이터 포인트들을 선형(Linear) 눈금 위에 정직하게 연결한 결과입니다. (최종가: {last_price:,.0f} KRW)")
+                # 최종 데이터 리포트
+                ipo_date = price_df.index[0].strftime('%Y-%m-%d')
+                last_p = price_df['close'].iloc[-1]
+                st.info(f"✅ **{ticker}** 차트는 **{ipo_date}(상장일)**부터 현재까지의 데이터를 **조작 없이** 선형 눈금으로 연결한 결과입니다. (최종가: {last_p:,.0f} KRW)")
             else:
-                st.error("데이터 서버 응답 대기 중이거나 티커명이 올바르지 않습니다.")
+                st.error("데이터 서버에서 해당 종목의 상장 이후 데이터를 가져오지 못했습니다.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
