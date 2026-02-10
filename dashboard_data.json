@@ -3,25 +3,25 @@
         "ticker": "226490.KS",
         "name": "KODEX 코스피",
         "price": 54605.0,
-        "score": -1.510180926322937,
+        "score": -1.5798372983932496,
         "signal": "wait",
         "potential_profit": 7.602325794341039,
         "entry_price": 54605.0,
         "target_price": 58756.25,
         "stop_loss": 53181.71428571428,
-        "timestamp": "2026-02-10 17:18:39"
+        "timestamp": "2026-02-10 17:27:06"
     },
     {
         "ticker": "114800.KS",
         "name": "KODEX 인버스",
         "price": 1859.0,
-        "score": 1.1909902334213256,
+        "score": 1.2269455432891845,
         "signal": "wait",
         "potential_profit": 4.709905479133714,
         "entry_price": 1859.0,
         "target_price": 1946.557142857143,
         "stop_loss": 1788.9542857142858,
-        "timestamp": "2026-02-10 17:19:22"
+        "timestamp": "2026-02-10 17:27:44"
     },
     {
         "ticker": "411060.KS",
@@ -33,7 +33,7 @@
         "entry_price": 33260.0,
         "target_price": 37940.0,
         "stop_loss": 31655.428571428572,
-        "timestamp": "2026-02-10 17:19:33"
+        "timestamp": "2026-02-10 17:27:53"
     },
     {
         "ticker": "144600.KS",
@@ -45,7 +45,7 @@
         "entry_price": 13575.0,
         "target_price": 17882.5,
         "stop_loss": 12098.142857142857,
-        "timestamp": "2026-02-10 17:20:11"
+        "timestamp": "2026-02-10 17:28:27"
     },
     {
         "ticker": "461490.KS",
@@ -57,7 +57,7 @@
         "entry_price": 15040.0,
         "target_price": 15377.5,
         "stop_loss": 14924.285714285714,
-        "timestamp": "2026-02-10 17:20:18"
+        "timestamp": "2026-02-10 17:28:33"
     },
     {
         "ticker": "437370.KS",
@@ -69,7 +69,7 @@
         "entry_price": 11290.0,
         "target_price": 11795.0,
         "stop_loss": 11116.857142857143,
-        "timestamp": "2026-02-10 17:20:27"
+        "timestamp": "2026-02-10 17:28:41"
     },
     {
         "ticker": "261220.KS",
@@ -81,30 +81,30 @@
         "entry_price": 14960.0,
         "target_price": 15857.5,
         "stop_loss": 14652.285714285714,
-        "timestamp": "2026-02-10 17:20:50"
+        "timestamp": "2026-02-10 17:29:01"
     },
     {
         "ticker": "005930.KS",
         "name": "삼성전자",
         "price": 165800.0,
-        "score": -1.985087013244629,
+        "score": -2.000420427322388,
         "signal": "wait",
         "potential_profit": 9.484318455970993,
         "entry_price": 165800.0,
         "target_price": 181525.0,
         "stop_loss": 160408.57142857142,
-        "timestamp": "2026-02-10 17:21:50"
+        "timestamp": "2026-02-10 17:29:53"
     },
     {
         "ticker": "000660.KS",
         "name": "SK 하이닉스",
         "price": 876000.0,
-        "score": -0.5573312997817993,
+        "score": -0.8959833145141601,
         "signal": "wait",
         "potential_profit": 14.668949771689482,
         "entry_price": 876000.0,
         "target_price": 1004500.0,
         "stop_loss": 831942.8571428572,
-        "timestamp": "2026-02-10 17:22:46"
+        "timestamp": "2026-02-10 17:30:45"
     }
 ]
