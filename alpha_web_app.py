@@ -100,7 +100,7 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 및 전세애 데이터 호출
+            # [Step 1] 종목 및 전구간 데이터 호출
             selected_asset = st.selectbox("📊 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
             ticker = asset_info['ticker']
@@ -118,12 +118,12 @@ if check_password():
             price_df = fetch_full_history(ticker)
             
             if not price_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 전략 통합 분석 (전구간)")
+                st.subheader(f"🏛️ {selected_asset} 전구간 궤적 및 Alpha 전략")
                 
-                # 시각화 엔진 (무조작 원칙 + 전략선 추가)
+                # 시각화 엔진 (데이터 정직성 + 전략 가독성 최적화)
                 fig = go.Figure()
                 
-                # 1. 실제 주가 (Solid Black)
+                # 1. 실제 주가 (Solid Black) - 전구간 관통
                 fig.add_trace(go.Scatter(
                     x=price_df.index, y=price_df['close'],
                     name="실제 주가",
@@ -131,37 +131,41 @@ if check_password():
                     hovertemplate="날짜: %{x}<br>주가: %{y:,.0f} KRW<extra></extra>"
                 ))
                 
-                # [AlphaEngine 전략선 - 검정색 테마]
+                # [AlphaEngine 전략 지점] 
+                # 역사적 스케일을 보호하기 위해 '최근 구간'에만 가독성 좋게 표시
                 target = float(asset_info['target_price'])
                 entry = float(asset_info['entry_price'])
                 
-                # 2. Alpha 매도 목표 (Dashed Black)
+                # 최근 10% 기간 계산 (전략선이 역사를 가리지 않게 함)
+                total_len = len(price_df)
+                start_idx = price_df.index[max(0, total_len - int(total_len * 0.1))] # 최근 10% 지점
+                end_idx = price_df.index[-1]
+                
+                # 2. Alpha 매도 목표 (Dashed Black - 최근 구간 매핑)
                 fig.add_trace(go.Scatter(
-                    x=[price_df.index[0], price_df.index[-1]], 
-                    y=[target, target],
-                    name="Alpha 매도목표",
+                    x=[start_idx, end_idx], y=[target, target],
+                    name="Alpha 매도목표 (Dash)",
                     line=dict(color='black', width=2, dash='dash'),
-                    hovertemplate=f"Alpha 매도: {target:,.0f} KRW<extra></extra>"
+                    hovertemplate=f"Alpha 매도 목표: {target:,.0f} KRW<extra></extra>"
                 ))
                 
-                # 3. Alpha 매수 진입 (Dotted Black)
+                # 3. Alpha 매수 진입 (Dotted Black - 최근 구간 매핑)
                 fig.add_trace(go.Scatter(
-                    x=[price_df.index[0], price_df.index[-1]], 
-                    y=[entry, entry],
-                    name="Alpha 매수진입",
+                    x=[start_idx, end_idx], y=[entry, entry],
+                    name="Alpha 매수진입 (Dot)",
                     line=dict(color='black', width=2, dash='dot'),
-                    hovertemplate=f"Alpha 매수: {entry:,.0f} KRW<extra></extra>"
+                    hovertemplate=f"Alpha 매수 진입: {entry:,.0f} KRW<extra></extra>"
                 ))
                 
                 fig.update_layout(
                     paper_bgcolor='white', plot_bgcolor='white',
                     height=600,
                     yaxis=dict(
-                        gridcolor='#f0f0f0', autorange=True,
+                        gridcolor='#f5f5f5', autorange=True,
                         title="Price (KRW)", side="right", tickformat=',.0f'
                     ),
                     xaxis=dict(
-                        gridcolor='#f0f0f0', title="Timeline",
+                        gridcolor='#f5f5f5', title="Timeline",
                         autorange=True, rangeslider=dict(visible=True)
                     ),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
@@ -171,11 +175,8 @@ if check_password():
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 하단 수치 가이드
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Alpha 매도(Dash)", f"{target:,.0f}")
-                c2.metric("현재가(Solid)", f"{price_df['close'].iloc[-1]:,.0f}")
-                c3.metric("Alpha 매수(Dot)", f"{entry:,.0f}")
+                # 하단 수치 가이드 (직관적 보조)
+                st.markdown(f"🏛️ **{selected_asset} 전략 정보**: 현재가 대비 매도 목표까지 **{((target/price_df['close'].iloc[-1])-1)*100:+.1f}%** 여유가 있습니다.")
             else:
                 st.error("데이터 로딩 실패")
 
