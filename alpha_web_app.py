@@ -100,80 +100,76 @@ if check_password():
             )
 
         with col_chart:
-            # 종목 선택 (사이드바와 메인 연동 최적화)
+            # 종목 선택
             selected_asset = st.selectbox("📊 상세 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
+            
+            # 차트 유형 선택 (로그 스케일 등)
+            col_opt1, col_opt2 = st.columns(2)
+            use_log = col_opt1.checkbox("로그 스케일 (장기 추세용)", value=False)
             
             @st.cache_data(ttl=300)
             def get_chart_data(ticker):
                 try:
-                    # 데이터 호출 (상장 이후 전체 기간 'max'로 확대)
+                    # 상장 이후 전체 기간
                     temp = yf.download(ticker, period="max", interval="1d", auto_adjust=True, progress=False)
                     if temp.empty: return pd.DataFrame()
-                    
-                    # 멀티인덱스 해제 및 컬럼 표준화
-                    if isinstance(temp.columns, pd.MultiIndex):
-                        temp.columns = temp.columns.get_level_values(0)
+                    if isinstance(temp.columns, pd.MultiIndex): temp.columns = temp.columns.get_level_values(0)
                     temp.columns = [c.lower() for c in temp.columns]
                     return temp.astype(float)
-                except Exception as e:
-                    return pd.DataFrame()
+                except Exception: return pd.DataFrame()
             
-            with st.spinner(f"{selected_asset} 리서치 중..."):
+            with st.spinner(f"{selected_asset} 역대 데이터 분석 중..."):
                 chart_df = get_chart_data(asset_info['ticker'])
             
             if not chart_df.empty and 'close' in chart_df.columns:
-                st.subheader(f"🏛️ {selected_asset} 전략 캔버스")
+                st.subheader(f"🏛️ {selected_asset} 전생애 전략 캔버스")
                 
-                # 데이터 정제
+                # 데이터 추출
                 current_price = chart_df['close'].iloc[-1]
                 target_p = float(asset_info['target_price'])
                 stop_p = float(asset_info['stop_loss'])
                 
-                # [v3.4 Premium Dynamic Scaling] 뭉침 방지
-                all_vals = [chart_df['close'].min(), chart_df['close'].max(), target_p, stop_p]
-                y_min = min(all_vals) * 0.97
-                y_max = max(all_vals) * 1.03
-                
-                # 시인성 극대화 Plotly 리뉴얼
+                # 시각화 엔진 (Plotly)
                 fig = go.Figure()
                 
-                # 1. 주가 (검정색 효과를 위해 다크모드에서 가장 선명한 굵은 흰색선 사용)
+                # 1. 메인 주가 선
                 fig.add_trace(go.Scatter(
                     x=chart_df.index, y=chart_df['close'],
-                    name="현재가", line=dict(color='white', width=3)
+                    name="주가 흐름", line=dict(color='white', width=2)
                 ))
                 
-                # 2. 목표가 (파란색)
+                # 2. 목표가/손절가 라인 (현재 시점 부근에만 강조하기 위해 최근 20% 지점부터 그리기)
+                start_idx = chart_df.index[int(len(chart_df)*0.85)] # 최근 15% 기간만 표시
                 fig.add_trace(go.Scatter(
-                    x=[chart_df.index[0], chart_df.index[-1]], y=[target_p, target_p],
-                    name="Target (Blue)", line=dict(color='#0088ff', width=2, dash='dash')
+                    x=[start_idx, chart_df.index[-1]], y=[target_p, target_p],
+                    name="Target (Blue)", line=dict(color='#0088ff', width=3, dash='dash')
                 ))
-                
-                # 3. 손절가 (빨간색)
                 fig.add_trace(go.Scatter(
-                    x=[chart_df.index[0], chart_df.index[-1]], y=[stop_p, stop_p],
-                    name="Stop (Red)", line=dict(color='#ff4b4b', width=2, dash='dot')
+                    x=[start_idx, chart_df.index[-1]], y=[stop_p, stop_p],
+                    name="Stop (Red)", line=dict(color='#ff4b4b', width=3, dash='dot')
                 ))
                 
+                # [v3.4 Smart Scaling]
+                # 전체 데이터를 보되, Y축 범위를 현재 주가와 타겟 부근으로 '기본값' 설정 (사용자가 줌 가능)
                 fig.update_layout(
                     template="plotly_dark", height=500,
-                    yaxis=dict(range=[y_min, y_max], gridcolor='#333', title="Price (KRW)"),
-                    xaxis=dict(gridcolor='#333', title="Date"),
+                    yaxis_type="log" if use_log else "linear",
+                    yaxis=dict(gridcolor='#333', title="Price (KRW)", autorange=True),
+                    xaxis=dict(gridcolor='#333', title="Date", rangeslider=dict(visible=True)), # 하단 슬라이더 추가
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                     margin=dict(l=10, r=10, t=40, b=10)
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 하단 대형 지표 (시인성 극대화)
+                # 하단 대형 지표
                 m1, m2, m3 = st.columns(3)
                 m1.metric("Target (🎯Blue)", f"{target_p:,.0f}")
-                m2.metric("Current (🏳️White)", f"{current_price:,.0f}", delta=f"{((current_price/chart_df['close'].iloc[-2]-1)*100):.2f}%")
+                m2.metric("Current (🏳️White)", f"{current_price:,.0f}")
                 m3.metric("Stop-Loss (🛑Red)", f"{stop_p:,.0f}")
             else:
-                st.error(f"차트 엔료 데이터를 불러오는 중입니다. ({selected_asset})")
-                st.info("데이터가 아직 준비되지 않았거나 종목 코드가 유효하지 않을 수 있습니다.")
+                st.error(f"데이터를 불러올 수 없습니다.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
