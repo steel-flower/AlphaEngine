@@ -100,90 +100,69 @@ if check_password():
             )
 
         with col_chart:
-            # [Step 1] 종목 선택 및 전략 정보 추출
+            # [Step 1] 종목 선택 및 데이터 로드
             selected_asset = st.selectbox("📊 상세 분석 종목 선택", df['name'].tolist())
             asset_info = df[df['name'] == selected_asset].iloc[0]
-            ticker = asset_info['ticker']
             
-            # [Step 2] 데이터 로드 (전체 역사)
             @st.cache_data(ttl=300)
-            def fetch_trend_data(t):
+            def fetch_full_history(t):
                 try:
                     raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
                     if raw.empty: return pd.DataFrame()
-                    
-                    data = raw.copy()
-                    if isinstance(data.columns, pd.MultiIndex):
-                        data.columns = data.columns.get_level_values(0)
-                    data.columns = [str(c).lower() for c in data.columns]
-                    
-                    # 월간 정제
-                    m_data = data[['close']].resample('ME').last().dropna()
-                    return m_data
-                except:
-                    return pd.DataFrame()
+                    if isinstance(raw.columns, pd.MultiIndex): raw.columns = raw.columns.get_level_values(0)
+                    raw.columns = [str(c).lower() for c in raw.columns]
+                    return raw[['close']].resample('ME').last().dropna()
+                except: return pd.DataFrame()
 
-            chart_df = fetch_trend_data(ticker)
+            chart_df = fetch_full_history(asset_info['ticker'])
             
             if not chart_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 전략 캔버스")
+                st.subheader(f"🏛️ {selected_asset} 전략 캔버스 (마스터 뷰)")
                 
-                # [Step 3] Plotly를 이용한 정밀 시각화
-                # 주가(Black), 매수/매도(Blue), 손절(Red)
+                # 수치 데이터
+                prices = chart_df['close']
+                curr = prices.iloc[-1]
+                target = float(asset_info['target_price'])
+                entry = float(asset_info['entry_price'])
+                stop = float(asset_info['stop_loss'])
+                
+                # [Step 2] Plotly 고성능 엔진
                 fig = go.Figure()
                 
-                # 1. 실제 주가 흐름 (Black)
+                # 메인 주가 (검정/화이트 대비)
                 fig.add_trace(go.Scatter(
-                    x=chart_df.index, y=chart_df['close'],
-                    name="실제 주가", line=dict(color='white', width=2) # 다크모드 가독성을 위해 흰색 테두리
+                    x=chart_df.index, y=prices,
+                    name="주가 흐름", line=dict(color='white', width=2)
                 ))
                 
-                # 2. 전략 수평선 (현재 시점 부근에만 강조)
-                # 전체 데이터를 그리면 과거 데이터가 뭉쳐 보이므로 수평선은 현재 가격 기준으로 적절히 배치
-                target_p = float(asset_info['target_price'])
-                entry_p = float(asset_info['entry_price'])
-                stop_p = float(asset_info['stop_loss'])
+                # 전략 가이드선 (차트 전체를 가로지르는 h-line 사용)
+                fig.add_hline(y=target, line_dash="dash", line_color="#0088ff", annotation_text=f"Sell: {target:,.0f}", annotation_position="top right")
+                fig.add_hline(y=entry, line_dash="dot", line_color="#00AAFF", annotation_text=f"Buy: {entry:,.0f}", annotation_position="bottom right")
+                fig.add_hline(y=stop, line_dash="longdash", line_color="#FF4B4B", annotation_text=f"Stop: {stop:,.0f}", annotation_position="bottom right")
                 
-                # 수평선 추가 (전체 기간이 아닌 최근 영역에만 표시하여 과거 왜곡 방지)
-                line_start = chart_df.index[int(len(chart_df)*0.9)] # 최근 10% 지점
+                # [v3.5 Smart Focus]
+                # 최근 3년 데이터와 전략 라인이 모두 보기에 가장 좋은 범위를 계산
+                recent_p = prices.tail(36)
+                y_min = min(recent_p.min(), stop, entry) * 0.95
+                y_max = max(recent_p.max(), target) * 1.05
                 
-                fig.add_trace(go.Scatter(
-                    x=[line_start, chart_df.index[-1]], y=[target_p, target_p],
-                    name="Blue: 전략 매도가", line=dict(color='#0088ff', width=3, dash='dash'),
-                    mode='lines+text', text=["", f"Goal: {target_p:,.0f}"], textposition="top left"
-                ))
-                fig.add_trace(go.Scatter(
-                    x=[line_start, chart_df.index[-1]], y=[entry_p, entry_p],
-                    name="Blue: 전략 매수가", line=dict(color='#00AAFF', width=3, dash='dot'),
-                    mode='lines+text', text=["", f"Entry: {entry_p:,.0f}"], textposition="bottom left"
-                ))
-                fig.add_trace(go.Scatter(
-                    x=[line_start, chart_df.index[-1]], y=[stop_p, stop_p],
-                    name="Red: 손절 방어선", line=dict(color='#FF4B4B', width=3, dash='longdash'),
-                    mode='lines+text', text=["", f"Stop: {stop_p:,.0f}"], textposition="bottom left"
-                ))
-                
-                # 가독성을 위한 레이아웃 조정
                 fig.update_layout(
                     template="plotly_dark", height=550,
                     xaxis=dict(gridcolor='#333', rangeslider=dict(visible=True)),
-                    yaxis=dict(gridcolor='#333', autorange=True, fixedrange=False),
+                    yaxis=dict(gridcolor='#333', range=[y_min, y_max], autorange=False, title="Price (KRW)"),
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    margin=dict(l=10, r=40, t=40, b=10)
+                    margin=dict(l=10, r=60, t=40, b=10)
                 )
                 
-                # Y축 범위 자동 최적화 (현재 주가와 전략 라인이 잘 보이도록)
-                # 사용자가 줌 가능하도록 설정
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # 🏛️ 하단 섹션 - 수치 정보
-                st.info(f"💡 현재 **{selected_asset}**은 Alpha 시스템 분석 결과 **{asset_info['signal'].upper()}** 신호가 유지되고 있습니다.")
+                # 상세 지표 카드
                 m1, m2, m3 = st.columns(3)
-                m2.metric("현재 주가", f"{chart_df['close'].iloc[-1]:,.0f}")
-                m1.metric("Alpha 매도목표", f"{target_p:,.0f}")
-                m3.metric("Alpha 안전바", f"{stop_p:,.0f}")
+                m2.metric("현재가", f"{curr:,.0f}")
+                m1.metric("Alpha 매도목표", f"{target:,.0f}", f"{(target/curr-1)*100:+.1f}%")
+                m3.metric("Alpha 손절안전", f"{stop:,.0f}", f"{(stop/curr-1)*100:+.1f}%")
             else:
-                st.error("데이터 로딩 중...")
+                st.error("데이터 서버 응답 대기 중...")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
