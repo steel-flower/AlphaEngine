@@ -66,7 +66,11 @@ else:
         h_df = pd.DataFrame(selected_item["history"])
         h_df['Date'] = pd.to_datetime(h_df['Date'])
         
-        # [CRITICAL DEBUG] Print first data to screen for verification
+        # [CRITICAL FIX] Force Numeric and Explicit Range
+        h_df['Close'] = pd.to_numeric(h_df['Close'], errors='coerce')
+        min_p = h_df['Close'].min() * 0.98
+        max_p = h_df['Close'].max() * 1.02
+        
         st.caption(f"Verifying {selected_name} data: First Close = {h_df['Close'].iloc[0]:,.0f}, Last Close = {h_df['Close'].iloc[-1]:,.0f}")
         
         fig = go.Figure()
@@ -112,7 +116,13 @@ else:
             template="plotly_dark",
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             xaxis=dict(showgrid=True, gridcolor='#30363d', title="Time (Linear Scale)"),
-            yaxis=dict(showgrid=True, gridcolor='#30363d', title="Price (Linear Scale)", tickformat=','),
+            yaxis=dict(
+                showgrid=True, 
+                gridcolor='#30363d', 
+                title="Price (Linear Scale Index Fix)", 
+                tickformat=',',
+                range=[min_p, max_p] # FORCE RANGE TO ACTUAL PRICE
+            ),
             height=600, margin=dict(l=0,r=0,t=0,b=0)
         )
         st.plotly_chart(fig, use_container_width=True)
