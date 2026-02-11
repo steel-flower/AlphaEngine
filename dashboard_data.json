@@ -2,62 +2,62 @@
     {
         "ticker": "226490.KS",
         "name": "KODEX 코스피",
-        "price": 54735.0,
-        "score": -1.2596319675445558,
+        "price": 54805.0,
+        "score": -1.290685510635376,
         "signal": "wait",
-        "potential_profit": 7.465515666392483,
-        "entry_price": 54735.0,
-        "target_price": 58821.25,
-        "stop_loss": 53334.0,
-        "timestamp": "2026-02-11 10:28:30"
+        "potential_profit": 7.487911686889746,
+        "entry_price": 54805.0,
+        "target_price": 58908.75,
+        "stop_loss": 53398.0,
+        "timestamp": "2026-02-11 10:38:05"
     },
     {
         "ticker": "114800.KS",
         "name": "KODEX 인버스",
-        "price": 1854.0,
-        "score": 1.3787772893905639,
+        "price": 1853.0,
+        "score": 1.322223687171936,
         "signal": "wait",
-        "potential_profit": 4.618585298194457,
-        "entry_price": 1854.0,
-        "target_price": 1939.6285714285714,
-        "stop_loss": 1785.4971428571428,
-        "timestamp": "2026-02-11 10:29:13"
+        "potential_profit": 4.628016344149842,
+        "entry_price": 1853.0,
+        "target_price": 1938.7571428571428,
+        "stop_loss": 1784.3942857142856,
+        "timestamp": "2026-02-11 10:38:51"
     },
     {
         "ticker": "411060.KS",
         "name": "ACE KRX 금현물",
-        "price": 33225.0,
+        "price": 33215.0,
         "score": -0.6135652661323547,
         "signal": "wait",
-        "potential_profit": 13.957863054928099,
-        "entry_price": 33225.0,
-        "target_price": 37862.5,
-        "stop_loss": 31635.0,
-        "timestamp": "2026-02-11 10:29:23"
+        "potential_profit": 13.969592051783414,
+        "entry_price": 33215.0,
+        "target_price": 37855.0,
+        "stop_loss": 31624.14285714286,
+        "timestamp": "2026-02-11 10:39:01"
     },
     {
         "ticker": "144600.KS",
         "name": "KODEX 은선물(H)",
-        "price": 13555.0,
+        "price": 13560.0,
         "score": 2.758850860595703,
         "signal": "buy",
-        "potential_profit": 31.51051272592906,
-        "entry_price": 13555.0,
-        "target_price": 17826.25,
-        "stop_loss": 12090.57142857143,
-        "timestamp": "2026-02-11 10:30:00"
+        "potential_profit": 31.489675516221865,
+        "entry_price": 13560.0,
+        "target_price": 17830.0,
+        "stop_loss": 12096.0,
+        "timestamp": "2026-02-11 10:39:41"
     },
     {
         "ticker": "461490.KS",
         "name": "RISE 글로벌 자산배분 액티브",
-        "price": 15055.0,
+        "price": 15045.0,
         "score": 0.07666093260049822,
         "signal": "wait",
-        "potential_profit": 2.216871471271855,
-        "entry_price": 15055.0,
-        "target_price": 15388.75,
-        "stop_loss": 14940.57142857143,
-        "timestamp": "2026-02-11 10:30:07"
+        "potential_profit": 2.201728148886527,
+        "entry_price": 15045.0,
+        "target_price": 15376.25,
+        "stop_loss": 14931.42857142857,
+        "timestamp": "2026-02-11 10:39:47"
     },
     {
         "ticker": "437370.KS",
@@ -69,42 +69,42 @@
         "entry_price": 11375.0,
         "target_price": 11888.75,
         "stop_loss": 11198.857142857143,
-        "timestamp": "2026-02-11 10:30:16"
+        "timestamp": "2026-02-11 10:39:56"
     },
     {
         "ticker": "261220.KS",
         "name": "KODEX WTI 원유선물(H)",
-        "price": 14950.0,
+        "price": 14955.0,
         "score": 3.797118902206421,
         "signal": "buy",
-        "potential_profit": 5.769230769230383,
-        "entry_price": 14950.0,
-        "target_price": 15812.5,
-        "stop_loss": 14654.285714285714,
-        "timestamp": "2026-02-11 10:30:39"
+        "potential_profit": 5.758943497157755,
+        "entry_price": 14955.0,
+        "target_price": 15816.25,
+        "stop_loss": 14659.714285714286,
+        "timestamp": "2026-02-11 10:40:21"
     },
     {
         "ticker": "005930.KS",
         "name": "삼성전자",
-        "price": 165200.0,
-        "score": -2.2703354358673096,
+        "price": 165800.0,
+        "score": -2.3803014755249023,
         "signal": "wait",
-        "potential_profit": 9.185835351089532,
-        "entry_price": 165200.0,
-        "target_price": 180375.0,
-        "stop_loss": 159997.14285714287,
-        "timestamp": "2026-02-11 10:31:37"
+        "potential_profit": 9.062123039806941,
+        "entry_price": 165800.0,
+        "target_price": 180825.0,
+        "stop_loss": 160648.57142857142,
+        "timestamp": "2026-02-11 10:41:22"
     },
     {
         "ticker": "000660.KS",
         "name": "SK 하이닉스",
-        "price": 866000.0,
-        "score": -1.0384528040885925,
+        "price": 868500.0,
+        "score": -1.2043263912200928,
         "signal": "wait",
-        "potential_profit": 14.693995381062338,
-        "entry_price": 866000.0,
-        "target_price": 993250.0,
-        "stop_loss": 822371.4285714285,
-        "timestamp": "2026-02-11 10:32:35"
+        "potential_profit": 14.57973517559008,
+        "entry_price": 868500.0,
+        "target_price": 995125.0,
+        "stop_loss": 825085.7142857143,
+        "timestamp": "2026-02-11 10:42:24"
     }
 ]
