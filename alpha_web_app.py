@@ -8,11 +8,14 @@ import yfinance as yf
 
 # 페이지 설정
 st.set_page_config(
-    page_title="Alpha Engine v3.4 Live Dashboard",
+    page_title="Alpha Engine v3.4.2 [MASTER PRECISION]",
     page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# [SYSTEM RECOVERY] Cache clearing for data files
+st.cache_data.clear()
 
 # 커스텀 CSS (프리미엄 미학)
 st.markdown("""
@@ -106,89 +109,87 @@ if check_password():
         st.markdown("---")
         st.subheader("📈 Master Precision AI Chart (5-Rule Compliance)")
         
-        selected_name = st.selectbox("분석 차트 선택", options=df['name'].tolist())
-        selected_data = df[df['name'] == selected_name].iloc[0]
+        st.markdown("---")
+        st.subheader("📈 Master Precision AI Chart (5-Rule Compliance)")
         
-        if "history" in selected_data:
-            hist_df = pd.DataFrame(selected_data['history'])
-            hist_df['Date'] = pd.to_datetime(hist_df['Date'])
+        selected_name = st.selectbox("분석 차트 선택", options=df['name'].tolist())
+        selected_row = df[df['name'] == selected_name].iloc[0]
+        
+        if "history" in selected_row:
+            hist_list = selected_row['history']
+            hist_df = pd.DataFrame(hist_list)
             
-            fig = go.Figure()
-            
-            # Rule 1, 2, 3: Raw price data, Linear scale, Direct mapping
-            fig.add_trace(go.Scatter(
-                x=hist_df['Date'], 
-                y=hist_df['Close'],
-                mode='lines',
-                name='Price',
-                line=dict(color='#00ff88', width=2),
-                hovertemplate='%{x}<br>Price: %{y:,.0f}원'
-            ))
-            
-            # Rule 4: No smoothing/manipulation - ensured by using raw hist_df
-            
-            # Buy/Sell Markers
-            buys = hist_df[hist_df['Signal'] > 0]
-            sells = hist_df[hist_df['Signal'] < 0]
-            
-            fig.add_trace(go.Scatter(
-                x=buys['Date'], y=buys['Close'],
-                mode='markers', name='Buy',
-                marker=dict(symbol='triangle-up', size=12, color='#00ff88'),
-                hovertemplate='Buy Signal<br>%{x}<br>%{y:,.0f}원'
-            ))
-            
-            fig.add_trace(go.Scatter(
-                x=sells['Date'], y=sells['Close'],
-                mode='markers', name='Sell',
-                marker=dict(symbol='triangle-down', size=12, color='#ff4b4b'),
-                hovertemplate='Sell Signal<br>%{x}<br>%{y:,.0f}원'
-            ))
+            # Explicit column check and conversion
+            if 'Date' in hist_df.columns and 'Close' in hist_df.columns:
+                hist_df['Date'] = pd.to_datetime(hist_df['Date'])
+                hist_df['Close'] = pd.to_numeric(hist_df['Close'], errors='coerce')
+                
+                # Debug Check for the '119원' error
+                avg_price = hist_df['Close'].mean()
+                if avg_price < 1000 and "코스피" in selected_name:
+                    st.error(f"⚠️ 데이터 이상 탐지: {selected_name}의 평균 가격이 너무 낮습니다 ({avg_price:.1f}원). 데이터 동기화가 필요합니다.")
+                
+                fig = go.Figure()
+                
+                # Rule 1, 2, 3: Raw price data, Linear scale, Direct mapping
+                fig.add_trace(go.Scatter(
+                    x=hist_df['Date'], 
+                    y=hist_df['Close'],
+                    mode='lines',
+                    name='Price',
+                    line=dict(color='#00ff88', width=2),
+                    hovertemplate='%{x}<br>Price: %{y:,.0f}원'
+                ))
+                
+                # Buy/Sell Markers
+                buys = hist_df[hist_df['Signal'] > 0]
+                sells = hist_df[hist_df['Signal'] < 0]
+                
+                fig.add_trace(go.Scatter(
+                    x=buys['Date'], y=buys['Close'],
+                    mode='markers', name='Buy',
+                    marker=dict(symbol='triangle-up', size=12, color='#00ff88'),
+                    hovertemplate='Buy Signal<br>%{x}<br>%{y:,.0f}원'
+                ))
+                
+                fig.add_trace(go.Scatter(
+                    x=sells['Date'], y=sells['Close'],
+                    mode='markers', name='Sell',
+                    marker=dict(symbol='triangle-down', size=12, color='#ff4b4b'),
+                    hovertemplate='Sell Signal<br>%{x}<br>%{y:,.0f}원'
+                ))
 
-            # Buy-Sell Connection Lines (Visual Profitability)
-            # Find matching buy-sell pairs for lines
-            last_buy = None
-            for idx, row in hist_df.iterrows():
-                if row['Signal'] > 0:
-                    last_buy = row
-                elif row['Signal'] < 0 and last_buy is not None:
-                    fig.add_trace(go.Scatter(
-                        x=[last_buy['Date'], row['Date']],
-                        y=[last_buy['Close'], row['Close']],
-                        mode='lines',
-                        line=dict(color='rgba(255, 255, 255, 0.3)', width=1, dash='dot'),
-                        showlegend=False,
-                        hoverinfo='skip'
-                    ))
-                    last_buy = None
+                # Buy-Sell Connection
+                last_buy = None
+                for _, row in hist_df.iterrows():
+                    if row['Signal'] > 0: last_buy = row
+                    elif row['Signal'] < 0 and last_buy is not None:
+                        fig.add_trace(go.Scatter(
+                            x=[last_buy['Date'], row['Date']],
+                            y=[last_buy['Close'], row['Close']],
+                            mode='lines', line=dict(color='rgba(255, 255, 255, 0.3)', width=1, dash='dot'),
+                            showlegend=False, hoverinfo='skip'
+                        ))
+                        last_buy = None
 
-            fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=0, r=0, t=30, b=0),
-                height=500,
-                xaxis=dict(
-                    showgrid=True, gridcolor='#30363d', 
-                    type='date', title='Time (Linear X-Axis)'
-                ),
-                yaxis=dict(
-                    showgrid=True, gridcolor='#30363d', 
-                    title='Price (Linear Y-Axis)', tickformat=','
-                ),
-                hovermode='x unified',
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Rule 5: Data Verification Table
-            with st.expander("📊 Raw Data Verification Table (Original Values)"):
-                st.dataframe(
-                    hist_df[['Date', 'Close', 'Total_Score', 'Signal']].sort_values('Date', ascending=False),
-                    use_container_width=True
+                fig.update_layout(
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                    margin=dict(l=0, r=0, t=30, b=0), height=500,
+                    xaxis=dict(showgrid=True, gridcolor='#30363d', type='date', title='Time (Linear X-Axis)'),
+                    yaxis=dict(showgrid=True, gridcolor='#30363d', title='Price (Linear Y-Axis)', tickformat=','),
+                    hovermode='x unified'
                 )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Rule 5: Data Verification Table
+                with st.expander("📊 Raw Data Verification Table (Original Values)"):
+                    st.write(f"Showing last 120 records for: {selected_name}")
+                    st.dataframe(hist_df[['Date', 'Close', 'Total_Score', 'Signal']].sort_values('Date', ascending=False), use_container_width=True)
+            else:
+                st.error("데이터 구조가 올바르지 않습니다 (Close 또는 Date 컬럼 누락).")
         else:
-            st.info("차트 데이터를 불러오는 중입니다. 모니터링 세션이 업데이트될 때까지 기다려 주세요.")
+            st.info("차트 데이터를 불러오는 중입니다. 잠시만 기다려 주세요.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):
