@@ -81,121 +81,114 @@ if check_password():
         st.markdown("---")
         
         # 메인 분석 섹션
-        col_list, col_chart = st.columns([1, 2])
+        st.subheader("📋 실시간 포지션 및 AI 전략 현황")
+        display_df = df[['name', 'score', 'signal', 'potential_profit', 'price', 'target_price', 'stop_loss']].copy()
+        display_df.columns = ['종목명', 'AI Score', '상태', '기대수익(%)', '현재가', '목표가', '손절가']
         
-        with col_list:
-            st.subheader("📋 실시간 포지션 현황")
-            display_df = df[['name', 'score', 'signal', 'potential_profit']].copy()
-            display_df.columns = ['종목명', 'AI Score', '상태', '기대수익(%)']
+        def color_signal(val):
+            if val == 'buy': return 'background-color: #004d00; color: #00ff88'
+            if val == 'wait': return 'background-color: #4d3300; color: #ffbc00'
+            return ''
+        
+        st.dataframe(
+            display_df.style.applymap(color_signal, subset=['상태'])
+            .format({
+                'AI Score': '{:.2f}', 
+                '기대수익(%)': '{:.1f}%',
+                '현재가': '{:,.0f}',
+                '목표가': '{:,.0f}',
+                '손절가': '{:,.0f}'
+            }),
+            use_container_width=True,
+            height=300
+        )
+
+        st.markdown("---")
+        st.subheader("📈 Master Precision AI Chart (5-Rule Compliance)")
+        
+        selected_name = st.selectbox("분석 차트 선택", options=df['name'].tolist())
+        selected_data = df[df['name'] == selected_name].iloc[0]
+        
+        if "history" in selected_data:
+            hist_df = pd.DataFrame(selected_data['history'])
+            hist_df['Date'] = pd.to_datetime(hist_df['Date'])
             
-            def color_signal(val):
-                color = '#00ff88' if val == 'buy' else '#ffbc00'
-                return f'color: {color}'
+            fig = go.Figure()
             
-            st.dataframe(
-                display_df.style.applymap(color_signal, subset=['상태'])
-                .format({'AI Score': '{:.2f}', '기대수익(%)': '{:.1f}%'}),
-                use_container_width=True,
-                height=400
+            # Rule 1, 2, 3: Raw price data, Linear scale, Direct mapping
+            fig.add_trace(go.Scatter(
+                x=hist_df['Date'], 
+                y=hist_df['Close'],
+                mode='lines',
+                name='Price',
+                line=dict(color='#00ff88', width=2),
+                hovertemplate='%{x}<br>Price: %{y:,.0f}원'
+            ))
+            
+            # Rule 4: No smoothing/manipulation - ensured by using raw hist_df
+            
+            # Buy/Sell Markers
+            buys = hist_df[hist_df['Signal'] > 0]
+            sells = hist_df[hist_df['Signal'] < 0]
+            
+            fig.add_trace(go.Scatter(
+                x=buys['Date'], y=buys['Close'],
+                mode='markers', name='Buy',
+                marker=dict(symbol='triangle-up', size=12, color='#00ff88'),
+                hovertemplate='Buy Signal<br>%{x}<br>%{y:,.0f}원'
+            ))
+            
+            fig.add_trace(go.Scatter(
+                x=sells['Date'], y=sells['Close'],
+                mode='markers', name='Sell',
+                marker=dict(symbol='triangle-down', size=12, color='#ff4b4b'),
+                hovertemplate='Sell Signal<br>%{x}<br>%{y:,.0f}원'
+            ))
+
+            # Buy-Sell Connection Lines (Visual Profitability)
+            # Find matching buy-sell pairs for lines
+            last_buy = None
+            for idx, row in hist_df.iterrows():
+                if row['Signal'] > 0:
+                    last_buy = row
+                elif row['Signal'] < 0 and last_buy is not None:
+                    fig.add_trace(go.Scatter(
+                        x=[last_buy['Date'], row['Date']],
+                        y=[last_buy['Close'], row['Close']],
+                        mode='lines',
+                        line=dict(color='rgba(255, 255, 255, 0.3)', width=1, dash='dot'),
+                        showlegend=False,
+                        hoverinfo='skip'
+                    ))
+                    last_buy = None
+
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(l=0, r=0, t=30, b=0),
+                height=500,
+                xaxis=dict(
+                    showgrid=True, gridcolor='#30363d', 
+                    type='date', title='Time (Linear X-Axis)'
+                ),
+                yaxis=dict(
+                    showgrid=True, gridcolor='#30363d', 
+                    title='Price (Linear Y-Axis)', tickformat=','
+                ),
+                hovermode='x unified',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
-
-        with col_chart:
-            # [규칙 1] "로우 데이터 그대로(Raw Data as-is)"
-            selected_asset = st.selectbox("📊 분석 종목 선택", df['name'].tolist())
-            asset_info = df[df['name'] == selected_asset].iloc[0]
-            ticker = asset_info['ticker']
             
-            @st.cache_data(ttl=60)
-            def fetch_absolute_raw_data(t):
-                try:
-                    raw = yf.download(t, period="max", interval="1d", auto_adjust=True, progress=False)
-                    if raw.empty: return pd.DataFrame()
-                    if isinstance(raw.columns, pd.MultiIndex): raw.columns = raw.columns.get_level_values(0)
-                    raw.columns = [str(c).lower().strip() for c in raw.columns]
-                    
-                    data = raw[['close']].copy().sort_index()
-                    # [규칙 3 & 4 보강] 기교 없이 보조 지표(ATR) 계산하여 히스토리 전략선 추출
-                    # AlphaEngine Sigma v3.2의 실제 로직인 'ATR 기반 변동성 추적'을 과거 데이터에 그대로 투영합니다.
-                    up = data['close'].diff().abs()
-                    data['atr_raw'] = up.rolling(14, min_periods=1).mean() # 엔진과 동일한 ATR 로직
-                    return data.astype(float)
-                except: return pd.DataFrame()
-
-            price_df = fetch_absolute_raw_data(ticker)
+            st.plotly_chart(fig, use_container_width=True)
             
-            if not price_df.empty:
-                st.subheader(f"🏛️ {selected_asset} 일자별 Alpha 전략 히스토리 (전구간)")
-                
-                # [규칙 5] 데이터 검증 테이블 (가장 정직한 숫자 공개)
-                st.markdown("##### 📈 1. 데이터 검증 테이블 (최신 5거래일 가격 및 전략 고점)")
-                verify_df = price_df.tail(5).copy()
-                # 현재 자산의 전략 배수(Multiplier) 추출
-                curr_p = asset_info['price']
-                curr_target = asset_info['target_price']
-                curr_stop = asset_info['stop_loss']
-                curr_atr = price_df['atr_raw'].iloc[-1]
-                
-                tp_m = (curr_target - curr_p) / (curr_atr + 1e-9)
-                sl_m = (curr_p - curr_stop) / (curr_atr + 1e-9)
-                
-                # 히스토리 전략선 생성 (수평선이 아닌 주가를 따라가는 동적 라인)
-                price_df['target_history'] = price_df['close'] + (tp_m * price_df['atr_raw'])
-                price_df['stop_history'] = price_df['close'] - (sl_m * price_df['atr_raw'])
-                
-                display_table = price_df[['close', 'target_history', 'stop_history']].tail(5).copy()
-                display_table.columns = ['시장가(Close)', 'Alpha매도점', 'Alpha매수점']
-                display_table.index = display_table.index.strftime('%Y-%m-%d')
-                st.dataframe(display_table.T, use_container_width=True)
-
-                # [규칙 2] "산술 눈금/리니어 스케일 필수"
-                fig = go.Figure()
-                
-                # (1) 실제 주가 궤적 (Solid Black)
-                fig.add_trace(go.Scatter(
-                    x=price_df.index, y=price_df['close'],
-                    name="실제 주가 (Close)",
-                    line=dict(color='black', width=2),
-                    hovertemplate="날짜: %{x}<br>주가: %{y:,.0f} KRW<extra></extra>"
-                ))
-                
-                # (2) Alpha 매도 목표 히스토리 (Dashed Gray) - 수평선 아님!
-                fig.add_trace(go.Scatter(
-                    x=price_df.index, y=price_df['target_history'],
-                    name="Alpha 매도 목표 (히스토리)",
-                    line=dict(color='rgba(0,0,0,0.3)', width=1, dash='dash'),
-                    hovertemplate="Alpha 매도: %{y:,.0f} KRW<extra></extra>"
-                ))
-                
-                # (3) Alpha 매수 진입 히스토리 (Dotted Gray) - 수평선 아님!
-                fig.add_trace(go.Scatter(
-                    x=price_df.index, y=price_df['stop_history'],
-                    name="Alpha 매수/손절 (히스토리)",
-                    line=dict(color='rgba(0,0,0,0.3)', width=1, dash='dot'),
-                    hovertemplate="Alpha 매수/손절: %{y:,.0f} KRW<extra></extra>"
-                ))
-                
-                fig.update_layout(
-                    paper_bgcolor='white', plot_bgcolor='white',
-                    height=600,
-                    yaxis=dict(
-                        gridcolor='#f0f0f0', autorange=True,
-                        title="Price (KRW, Linear Scale)", side="right", tickformat=',.0f'
-                    ),
-                    xaxis=dict(
-                        gridcolor='#f0f0f0', title="Timeline",
-                        autorange=True, rangeslider=dict(visible=True)
-                    ),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                    hovermode="x unified", # 커서를 대면 해당 날짜의 세 가격을 동시 노출
-                    margin=dict(l=10, r=40, t=50, b=10)
+            # Rule 5: Data Verification Table
+            with st.expander("📊 Raw Data Verification Table (Original Values)"):
+                st.dataframe(
+                    hist_df[['Date', 'Close', 'Total_Score', 'Signal']].sort_values('Date', ascending=False),
+                    use_container_width=True
                 )
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # 전구간 보고
-                st.info(f"✅ **{ticker}** 전구간 분석 완료. 과거의 어떤 지점에 커서를 대더라도 **해당 시점의 전략 가격**을 확인하실 수 있습니다.")
-            else:
-                st.error("데이터 로딩 실패")
+        else:
+            st.info("차트 데이터를 불러오는 중입니다. 모니터링 세션이 업데이트될 때까지 기다려 주세요.")
 
         # 하단 상세 정보
         with st.expander("🏛️ v.3.4 마스터 전략 가이드 상세 보기"):

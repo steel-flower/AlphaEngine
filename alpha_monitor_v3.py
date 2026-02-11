@@ -39,11 +39,11 @@ def run_monitor():
     # {ticker: "buy" | "sell" | "wait"}
     last_signals = {}
     
-    print("\n" + "═"*70)
+    print("\n" + "="*70)
     print("    ALPHA ENGINE SIGMA v3.2 REAL-TIME MONITOR")
     print("    Monitoring starting... (Interval: 5 Minutes)")
     print("    Recipient: frederic.jeon@gmail.com")
-    print("═"*70 + "\n")
+    print("="*70 + "\n")
 
     while True:
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -148,7 +148,8 @@ def run_monitor():
                     "entry_price": engine.best_params.get('entry_threshold_px', lp), # Simplified for dashboard
                     "target_price": lp + (tp_m * latr),
                     "stop_loss": lp - (sl_m * latr),
-                    "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    "history": res[['Close', 'Total_Score', 'Signal']].tail(120).reset_index().rename(columns={'index': 'Date'}).to_dict(orient='records')
                 })
                 
             except Exception as e:

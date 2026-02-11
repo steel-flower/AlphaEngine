@@ -159,7 +159,7 @@ class AlphaEngineSigma:
                 tx = (self.is_downtrend_mode and days>=5) or (days>30)
                 if px[i] < sl_p or px[i] > tp_p or res['Total_Score'].iloc[i-1] < -0.4 or tx: pos = 0; sigs[i] = -1; cost = sz * 0.003
             rets[i] = (sigs[i] if pos==1 and sigs[i]>0 else (sz if pos==1 else 0)) * mk[i] - cost; ytd = (1 + ytd) * (1 + rets[i]) - 1
-        res['Strategy_Return'] = rets; cum = (1 + rets).cumprod(); tr = []
+        res['Strategy_Return'] = rets; res['Signal'] = sigs; res['Cum_Return'] = (1 + rets).cumprod(); tr = []
         if len(res) > 0:
             st = -1
             for i in range(len(res)):
@@ -293,9 +293,9 @@ class AlphaEngineSigma:
 def main():
     assets = [("KODEX 코스피", "226490.KS"), ("KODEX 인버스", "114800.KS"), ("ACE KRX 금현물", "411060.KS"), ("KODEX 은선물(H)", "144600.KS"), ("RISE 글로벌 자산배분 액티브", "461490.KS"), ("RISE 글로벌농업경제", "437370.KS"), ("KODEX WTI 원유선물(H)", "261220.KS"), ("삼성전자", "005930.KS"), ("SK 하이닉스", "000660.KS")]
     while True:
-        os.system('cls' if os.name == 'nt' else 'clear'); print("\n"+"═"*70+"\n    ALPHA ENGINE SIGMA v3.2 MASTER PRECISION\n"+"═"*70)
+        os.system('cls' if os.name == 'nt' else 'clear'); print("\n"+"="*70+"\n    ALPHA ENGINE SIGMA v3.2 MASTER PRECISION\n"+"="*70)
         for i, (n, t) in enumerate(assets, 1): print(f"  {i:2d}. {n} ({t})")
-        print(f"  10. [RUN ALL] 모든 종목 일괄 분석 및 순차 진화\n  11. [RUN ALL x10] 모든 종목 10회 검증 및 최강 지능 추출\n  12. [SELECT x10] 해당 종목만 10회 검증 및 최강 지능 추출\n  Q.  [EXIT] 종료\n"+"═"*70)
+        print(f"  10. [RUN ALL] 모든 종목 일괄 분석 및 순차 진화\n  11. [RUN ALL x10] 모든 종목 10회 검증 및 최강 지능 추출\n  12. [SELECT x10] 해당 종목만 10회 검증 및 최강 지능 추출\n  Q.  [EXIT] 종료\n"+"="*70)
         choice = input("\n [Choice]: ").upper()
         if choice == 'Q': break
         if choice == '12':

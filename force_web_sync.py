@@ -5,10 +5,10 @@ from alpha_monitor_v3 import AlphaEngineSigma, EmailNotifier
 import glob
 
 def force_sync():
-    print("\n" + "═"*70)
+    print("\n" + "="*70)
     print("    [v3.4] 웹 대시보드 강제 데이터 동기화 (Test Mode)")
     print("    시간 체크를 무시하고 현재 시점의 데이터를 GitHub로 전송합니다.")
-    print("═"*70 + "\n")
+    print("="*70 + "\n")
 
     assets = [
         ("KODEX 코스피", "226490.KS"), 
@@ -80,7 +80,8 @@ def force_sync():
                 "entry_price": engine.best_params.get('entry_threshold_px', lp),
                 "target_price": lp + (tp_m * latr),
                 "stop_loss": lp - (sl_m * latr),
-                "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                "history": res[['Close', 'Total_Score', 'Signal']].tail(120).reset_index().rename(columns={'index': 'Date'}).to_dict(orient='records')
             })
         except Exception as e:
             print(f" [!] {name} 오류: {e}")
