@@ -81,7 +81,7 @@ def force_sync():
             for d, r in tail.iterrows():
                 hist.append({
                     "Date": d.strftime('%Y-%m-%d'),
-                    "Close": round(float(r['Close']), 2),
+                    "Close": round(float(r['Actual_Close']), 2),
                     "Score": round(float(r['Total_Score']), 4),
                     "Sig": int(r['Signal'])
                 })

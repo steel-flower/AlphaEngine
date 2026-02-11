@@ -133,12 +133,14 @@ class AlphaEngineSigma:
         seq = max(5, min(60, len(dft)//3)); Xs = self.scaler_X.transform(dft[self.features])
         X_tns = torch.FloatTensor([Xs[i-seq:i] for i in range(seq, len(Xs))])
         with torch.no_grad(): pred = self.scaler_y.inverse_transform(self.model(X_tns).numpy()).flatten()
-        res = dft.iloc[seq:].copy(); res['Pred_Ret'] = pred; res['Strategy_Return'] = 0.0; res['Year'] = res.index.year
+        res = dft.iloc[seq:].copy()
+        res['Actual_Close'] = dft['Close'].iloc[seq:].values # Store absolute price
+        res['Pred_Ret'] = pred; res['Strategy_Return'] = 0.0; res['Year'] = res.index.year
         # Strictly v3.1 Scoring Logic
         res['Total_Score'] = (np.where(res['Plus_DI']>res['Minus_DI'], 0.5, -0.45) + np.where(res['OBV_Slope']>1.0, 0.5, -0.25) + np.where(res['MACD']>res['MACD_Signal'], 0.3, -0.3) + np.where(res['Stoch_K']>res['Stoch_D'], 0.2, -0.2)) + (res['Pred_Ret']*55)
         
         pos = 0; ent = 0; hi = 0; ytd = 0.0; yr = res['Year'].iloc[0]; days = 0; sigs = np.zeros(len(res)); rets = np.zeros(len(res))
-        px = res['Close'].values; atrs = res['ATR'].values; mk = res['Close'].pct_change().fillna(0).values
+        px = res['Actual_Close'].values; atrs = res['ATR'].values; mk = res['Actual_Close'].pct_change().fillna(0).values
         for i in range(1, len(res)):
             if res['Year'].iloc[i] != yr: yr = res['Year'].iloc[i]; ytd = 0.0
             if ytd < 0: def_m = 0.7; eth = eth_b * 1.5; sl = sl_b * 0.7; tp = tp_b * 1.2
