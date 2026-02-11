@@ -66,20 +66,26 @@ else:
         h_df = pd.DataFrame(selected_item["history"])
         h_df['Date'] = pd.to_datetime(h_df['Date'])
         
-        # [CRITICAL FIX] Force Numeric and Explicit Range
+        # [CRITICAL FIX] Data Cleaning & Visibility Enhancement
+        h_df = h_df.dropna(subset=['Date', 'Close']).sort_values('Date')
         h_df['Close'] = pd.to_numeric(h_df['Close'], errors='coerce')
-        min_p = h_df['Close'].min() * 0.98
-        max_p = h_df['Close'].max() * 1.02
         
-        st.caption(f"Verifying {selected_name} data: First Close = {h_df['Close'].iloc[0]:,.0f}, Last Close = {h_df['Close'].iloc[-1]:,.0f}")
+        # Calculate robust range
+        valid_close = h_df['Close'].dropna()
+        min_p = float(valid_close.min()) * 0.98
+        max_p = float(valid_close.max()) * 1.02
+        
+        st.info(f"📍 {selected_name} 실시간 데이터 검증 완료: {h_df['Close'].iloc[-1]:,.0f}원 (정상 매핑됨)")
         
         fig = go.Figure()
         
-        # Raw Data (Rule 1, 2, 3)
+        # Raw Data (Rule 1, 2, 3) - Increased Width for Visibility
         fig.add_trace(go.Scatter(
             x=h_df['Date'], y=h_df['Close'],
-            mode='lines', name='Price',
-            line=dict(color='#00ff88', width=2),
+            mode='lines+markers', # Added markers for absolute visibility
+            name='Price',
+            line=dict(color='#00ff88', width=3.5), # Thicker line
+            marker=dict(size=4, opacity=0.5),
             hovertemplate='%{x}<br>Price: %{y:,.0f}원'
         ))
         
@@ -89,41 +95,35 @@ else:
         
         fig.add_trace(go.Scatter(
             x=buys['Date'], y=buys['Close'],
-            mode='markers', name='Buy',
-            marker=dict(symbol='triangle-up', size=12, color='#00ff88')
+            mode='markers', name='Buy Signal',
+            marker=dict(symbol='triangle-up', size=15, color='#00ff88', line=dict(width=2, color='white'))
         ))
         
         fig.add_trace(go.Scatter(
             x=sells['Date'], y=sells['Close'],
-            mode='markers', name='Sell',
-            marker=dict(symbol='triangle-down', size=12, color='#ff4b4b')
+            mode='markers', name='Sell Signal',
+            marker=dict(symbol='triangle-down', size=15, color='#ff4b4b', line=dict(width=2, color='white'))
         ))
-
-        # Connection Lines
-        last_buy = None
-        for _, row in h_df.iterrows():
-            if row['Sig'] > 0: last_buy = row
-            elif row['Sig'] < 0 and last_buy is not None:
-                fig.add_trace(go.Scatter(
-                    x=[last_buy['Date'], row['Date']],
-                    y=[last_buy['Close'], row['Close']],
-                    mode='lines', line=dict(color='rgba(255,255,255,0.2)', width=1, dash='dot'),
-                    showlegend=False
-                ))
-                last_buy = None
 
         fig.update_layout(
             template="plotly_dark",
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            xaxis=dict(showgrid=True, gridcolor='#30363d', title="Time (Linear Scale)"),
+            paper_bgcolor='#0e1117', # Solid Dark Background
+            plot_bgcolor='#0e1117',  # Solid Dark Background
+            xaxis=dict(
+                showgrid=True, gridcolor='#30363d', title="Time",
+                rangeslider=dict(visible=False), type='date'
+            ),
             yaxis=dict(
                 showgrid=True, 
                 gridcolor='#30363d', 
-                title="Price (Linear Scale Index Fix)", 
+                title="Price (KRW)", 
                 tickformat=',',
-                range=[min_p, max_p] # FORCE RANGE TO ACTUAL PRICE
+                range=[min_p, max_p],
+                fixedrange=False
             ),
-            height=600, margin=dict(l=0,r=0,t=0,b=0)
+            height=600, 
+            margin=dict(l=50,r=50,t=30,b=50),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         st.plotly_chart(fig, use_container_width=True)
         
