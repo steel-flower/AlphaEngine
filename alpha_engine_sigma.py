@@ -159,14 +159,15 @@ class AlphaEngineSigma:
                 tx = (self.is_downtrend_mode and days>=5) or (days>30)
                 if px[i] < sl_p or px[i] > tp_p or res['Total_Score'].iloc[i-1] < -0.4 or tx: pos = 0; sigs[i] = -1; cost = sz * 0.003
             rets[i] = (sigs[i] if pos==1 and sigs[i]>0 else (sz if pos==1 else 0)) * mk[i] - cost; ytd = (1 + ytd) * (1 + rets[i]) - 1
-        res['Strategy_Return'] = rets; res['Signal'] = sigs; res['Cum_Return'] = (1 + rets).cumprod(); tr = []
+        cum_ret = (1 + rets).cumprod()
+        res['Strategy_Return'] = rets; res['Signal'] = sigs; res['Cum_Return'] = cum_ret; tr = []
         if len(res) > 0:
             st = -1
             for i in range(len(res)):
                 if sigs[i] > 0 and st == -1: st = i
                 elif sigs[i] == -1 and st != -1: tr.append({'year': res['Year'].iloc[i], 'pnl': (1+rets[st:i+1]).prod()-1}); st = -1
-        mdd = np.max((np.maximum.accumulate(cum) - cum) / (np.maximum.accumulate(cum) + 1e-9))
-        return res, {'total_return': cum[-1]-1, 'sharpe': (rets.mean()/(rets.std()+1e-9))*np.sqrt(252), 'mdd': mdd, 'trades': tr}
+        mdd = np.max((np.maximum.accumulate(cum_ret) - cum_ret) / (np.maximum.accumulate(cum_ret) + 1e-9))
+        return res, {'total_return': cum_ret[-1]-1, 'sharpe': (rets.mean()/(rets.std()+1e-9))*np.sqrt(252), 'mdd': mdd, 'trades': tr}
 
     def generate_report(self, res, met):
         def get_w(s): return sum(2 if ord(c)>127 else 1 for c in str(s))
