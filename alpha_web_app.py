@@ -5,9 +5,9 @@ import os
 import plotly.express as px
 from datetime import datetime
 
-# V3.5.0 [ULTRA-SOLID: FINAL VERIFICATION]
+# V3.5.2 [MASTER RECOVERY]
 st.set_page_config(
-    page_title="Alpha Engine v3.5.0",
+    page_title="Alpha Engine v3.5.2",
     page_icon="🏛️",
     layout="wide"
 )
@@ -24,10 +24,10 @@ def load_data():
 data = load_data()
 
 if not data:
-    st.title("🏛️ Alpha Engine v3.5.0")
+    st.title("🏛️ Alpha Engine v3.5.2")
     st.error("❌ 데이터를 로드할 수 없습니다. (dashboard_data.json 부재)")
 else:
-    st.title("🚀 Alpha Engine Sigma v3.5.0")
+    st.title("🚀 Alpha Engine Sigma v3.5.2 Live")
     st.caption(f"Last Updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # 1. Metrics Overview
